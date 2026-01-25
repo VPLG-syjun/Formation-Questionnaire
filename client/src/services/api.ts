@@ -30,7 +30,7 @@ export async function createSurvey(data: CreateSurveyDTO): Promise<{ id: string;
 
 export async function updateSurvey(
   id: string,
-  data: { status?: string; admin_notes?: string }
+  data: { status?: string; adminNotes?: string }
 ): Promise<{ message: string }> {
   const response = await fetch(`${API_BASE}/surveys/${id}`, {
     method: 'PATCH',

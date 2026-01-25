@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Survey } from '../types/survey';
 import { fetchSurvey, updateSurvey, generatePDF, getDownloadURL } from '../services/api';
 
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +25,7 @@ export default function SurveyDetail() {
       setLoading(true);
       const data = await fetchSurvey(id);
       setSurvey(data);
-      setAdminNotes(data.admin_notes || '');
+      setAdminNotes(data.adminNotes || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : '설문을 불러오는데 실패했습니다.');
     } finally {
@@ -41,7 +40,7 @@ export default function SurveyDetail() {
     setMessage({ type: '', text: '' });
 
     try {
-      await updateSurvey(id, { status, admin_notes: adminNotes });
+      await updateSurvey(id, { status, adminNotes });
       setMessage({ type: 'success', text: `설문이 ${status === 'approved' ? '승인' : '반려'}되었습니다.` });
       loadSurvey();
     } catch (err) {
@@ -77,6 +76,10 @@ export default function SurveyDetail() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const formatPrice = (amount: number) => {
+    return '₩' + amount.toLocaleString();
   };
 
   const getStatusBadge = (status: string) => {
@@ -122,22 +125,22 @@ export default function SurveyDetail() {
           <h3>고객 정보</h3>
           <div className="detail-row">
             <span className="detail-label">이름</span>
-            <span className="detail-value">{survey.customer_name}</span>
+            <span className="detail-value">{survey.customerInfo?.name || '-'}</span>
           </div>
           <div className="detail-row">
             <span className="detail-label">이메일</span>
-            <span className="detail-value">{survey.customer_email}</span>
+            <span className="detail-value">{survey.customerInfo?.email || '-'}</span>
           </div>
-          {survey.customer_phone && (
+          {survey.customerInfo?.phone && (
             <div className="detail-row">
               <span className="detail-label">연락처</span>
-              <span className="detail-value">{survey.customer_phone}</span>
+              <span className="detail-value">{survey.customerInfo.phone}</span>
             </div>
           )}
-          {survey.company_name && (
+          {survey.customerInfo?.company && (
             <div className="detail-row">
               <span className="detail-label">회사명</span>
-              <span className="detail-value">{survey.company_name}</span>
+              <span className="detail-value">{survey.customerInfo.company}</span>
             </div>
           )}
         </div>
@@ -150,26 +153,34 @@ export default function SurveyDetail() {
             <span className="detail-value">{getStatusBadge(survey.status)}</span>
           </div>
           <div className="detail-row">
+            <span className="detail-label">예상 금액</span>
+            <span className="detail-value" style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
+              {formatPrice(survey.totalPrice || 0)}
+            </span>
+          </div>
+          <div className="detail-row">
             <span className="detail-label">제출일</span>
-            <span className="detail-value">{formatDate(survey.created_at)}</span>
+            <span className="detail-value">{formatDate(survey.createdAt)}</span>
           </div>
           <div className="detail-row">
             <span className="detail-label">검토일</span>
-            <span className="detail-value">{formatDate(survey.reviewed_at)}</span>
+            <span className="detail-value">{formatDate(survey.reviewedAt)}</span>
           </div>
           <div className="detail-row">
             <span className="detail-label">문서 생성일</span>
-            <span className="detail-value">{formatDate(survey.document_generated_at)}</span>
+            <span className="detail-value">{formatDate(survey.documentGeneratedAt)}</span>
           </div>
         </div>
 
-        {/* Survey Responses */}
+        {/* Survey Answers */}
         <div className="detail-section">
           <h3>설문 응답</h3>
-          {survey.responses.map((response, index) => (
+          {survey.answers?.map((answer, index) => (
             <div key={index} className="question-card">
-              <h4>Q{index + 1}. {response.question}</h4>
-              <p style={{ marginTop: '10px', color: '#374151' }}>{response.answer}</p>
+              <h4>{answer.questionId}</h4>
+              <p style={{ marginTop: '10px', color: '#374151' }}>
+                {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
+              </p>
             </div>
           ))}
         </div>
@@ -214,7 +225,7 @@ export default function SurveyDetail() {
               {isGeneratingPDF ? 'PDF 생성 중...' : 'PDF 문서 생성'}
             </button>
 
-            {survey.document_generated_at && (
+            {survey.documentGeneratedAt && (
               <a
                 href={getDownloadURL(survey.id)}
                 className="btn btn-secondary"
