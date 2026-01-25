@@ -15,70 +15,86 @@ export function generateSurveyPDF(survey: Survey): Promise<string> {
     const fileName = `survey_${survey.id}_${Date.now()}.pdf`;
     const filePath = path.join(outputDir, fileName);
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({
+      margin: 50,
+      permissions: {
+        printing: 'highResolution',
+        modifying: false,
+        copying: false,  // Disable text copying
+        annotating: false,
+        fillingForms: false,
+        contentAccessibility: false,
+        documentAssembly: false
+      }
+    });
     const stream = fs.createWriteStream(filePath);
 
     doc.pipe(stream);
 
     // Title
-    doc.fontSize(24).text('설문 응답 보고서', { align: 'center' });
+    doc.fontSize(24).text('Formation Service Report', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(14).fillColor('#666666').text('Service Agreement Summary', { align: 'center' });
     doc.moveDown(2);
 
     // Customer Information Section
-    doc.fontSize(16).fillColor('#2563eb').text('고객 정보', { underline: true });
+    doc.fontSize(16).fillColor('#1e3a5f').text('Customer Information', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(12).fillColor('#000000');
-    doc.text(`이름: ${survey.customer_name}`);
-    doc.text(`이메일: ${survey.customer_email}`);
-    if (survey.customer_phone) {
-      doc.text(`전화번호: ${survey.customer_phone}`);
+    doc.text(`Name: ${survey.customerInfo.name}`);
+    doc.text(`Email: ${survey.customerInfo.email}`);
+    if (survey.customerInfo.phone) {
+      doc.text(`Phone: ${survey.customerInfo.phone}`);
     }
-    if (survey.company_name) {
-      doc.text(`회사명: ${survey.company_name}`);
+    if (survey.customerInfo.company) {
+      doc.text(`Company: ${survey.customerInfo.company}`);
     }
     doc.moveDown(1.5);
 
-    // Survey Status
-    doc.fontSize(16).fillColor('#2563eb').text('설문 상태', { underline: true });
+    // Service Summary
+    doc.fontSize(16).fillColor('#1e3a5f').text('Service Summary', { underline: true });
     doc.moveDown(0.5);
     doc.fontSize(12).fillColor('#000000');
-    const statusText = {
-      pending: '검토 대기',
-      approved: '승인됨',
-      rejected: '반려됨'
+    const statusText: Record<string, string> = {
+      pending: 'Pending Review',
+      approved: 'Approved',
+      rejected: 'Rejected'
     };
-    doc.text(`상태: ${statusText[survey.status]}`);
-    doc.text(`제출일: ${new Date(survey.created_at).toLocaleDateString('ko-KR')}`);
-    if (survey.reviewed_at) {
-      doc.text(`검토일: ${new Date(survey.reviewed_at).toLocaleDateString('ko-KR')}`);
+    doc.text(`Status: ${statusText[survey.status]}`);
+    doc.text(`Total Price: ${survey.totalPrice.toLocaleString()} KRW`);
+    doc.text(`Submitted: ${new Date(survey.createdAt).toLocaleDateString('ko-KR')}`);
+    if (survey.reviewedAt) {
+      doc.text(`Reviewed: ${new Date(survey.reviewedAt).toLocaleDateString('ko-KR')}`);
     }
     doc.moveDown(1.5);
 
-    // Survey Responses Section
-    doc.fontSize(16).fillColor('#2563eb').text('설문 응답', { underline: true });
+    // Survey Answers Section
+    doc.fontSize(16).fillColor('#1e3a5f').text('Survey Responses', { underline: true });
     doc.moveDown(0.5);
-    doc.fontSize(12).fillColor('#000000');
+    doc.fontSize(11).fillColor('#000000');
 
-    survey.responses.forEach((response, index) => {
-      doc.font('Helvetica-Bold').text(`Q${index + 1}. ${response.question}`);
-      doc.font('Helvetica').text(`A. ${response.answer}`);
-      doc.moveDown(0.8);
+    survey.answers.forEach((answer, index) => {
+      const value = Array.isArray(answer.value) ? answer.value.join(', ') : answer.value;
+      doc.font('Helvetica-Bold').text(`${index + 1}. ${answer.questionId}`);
+      doc.font('Helvetica').text(`   ${value}`);
+      doc.moveDown(0.5);
     });
 
     // Admin Notes (if any)
-    if (survey.admin_notes) {
+    if (survey.adminNotes) {
       doc.moveDown(1);
-      doc.fontSize(16).fillColor('#2563eb').text('관리자 메모', { underline: true });
+      doc.fontSize(16).fillColor('#1e3a5f').text('Admin Notes', { underline: true });
       doc.moveDown(0.5);
-      doc.fontSize(12).fillColor('#000000').text(survey.admin_notes);
+      doc.fontSize(12).fillColor('#000000').text(survey.adminNotes);
     }
 
     // Footer
     doc.moveDown(2);
     doc.fontSize(10).fillColor('#666666').text(
-      `문서 생성일: ${new Date().toLocaleDateString('ko-KR')} ${new Date().toLocaleTimeString('ko-KR')}`,
+      `Document generated: ${new Date().toLocaleDateString('ko-KR')} ${new Date().toLocaleTimeString('ko-KR')}`,
       { align: 'center' }
     );
+    doc.text('This document is confidential and for authorized use only.', { align: 'center' });
 
     doc.end();
 

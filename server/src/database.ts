@@ -19,11 +19,9 @@ db.pragma('journal_mode = WAL');
 db.exec(`
   CREATE TABLE IF NOT EXISTS surveys (
     id TEXT PRIMARY KEY,
-    customer_name TEXT NOT NULL,
-    customer_email TEXT NOT NULL,
-    customer_phone TEXT,
-    company_name TEXT,
-    responses TEXT NOT NULL,
+    customer_info TEXT NOT NULL,
+    answers TEXT NOT NULL,
+    total_price INTEGER DEFAULT 0,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
     admin_notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

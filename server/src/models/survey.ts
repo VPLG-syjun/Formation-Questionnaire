@@ -1,31 +1,35 @@
-export interface SurveyResponse {
-  question: string;
-  answer: string;
+export interface SurveyAnswer {
+  questionId: string;
+  value: string | string[];
+  price?: number;
+}
+
+export interface CustomerInfo {
+  name: string;
+  email: string;
+  phone?: string;
+  company?: string;
 }
 
 export interface Survey {
   id: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone?: string;
-  company_name?: string;
-  responses: SurveyResponse[];
+  customerInfo: CustomerInfo;
+  answers: SurveyAnswer[];
+  totalPrice: number;
   status: 'pending' | 'approved' | 'rejected';
-  admin_notes?: string;
-  created_at: string;
-  reviewed_at?: string;
-  document_generated_at?: string;
+  adminNotes?: string;
+  createdAt: string;
+  reviewedAt?: string;
+  documentGeneratedAt?: string;
 }
 
 export interface CreateSurveyDTO {
-  customer_name: string;
-  customer_email: string;
-  customer_phone?: string;
-  company_name?: string;
-  responses: SurveyResponse[];
+  customerInfo: CustomerInfo;
+  answers: SurveyAnswer[];
+  totalPrice: number;
 }
 
 export interface UpdateSurveyDTO {
   status?: 'pending' | 'approved' | 'rejected';
-  admin_notes?: string;
+  adminNotes?: string;
 }

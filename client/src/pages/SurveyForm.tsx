@@ -1,154 +1,364 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { questionSections, BASE_PRICE } from '../data/questions';
+import { Question, SurveyAnswer } from '../types/survey';
 import { createSurvey } from '../services/api';
-
-const SURVEY_QUESTIONS = [
-  '현재 사용하고 계신 서비스에 대해 어떻게 알게 되셨나요?',
-  '서비스를 이용하시면서 가장 만족스러운 점은 무엇인가요?',
-  '서비스 개선이 필요하다고 생각하시는 부분이 있다면 말씀해주세요.',
-  '추가로 원하시는 기능이나 서비스가 있으신가요?',
-  '서비스를 다른 분들께 추천하실 의향이 있으신가요? 그 이유는 무엇인가요?',
-];
 
 export default function SurveyForm() {
   const navigate = useNavigate();
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState({
-    customer_name: '',
-    customer_email: '',
-    customer_phone: '',
-    company_name: '',
-    answers: SURVEY_QUESTIONS.map(() => ''),
-  });
+  const currentSection = questionSections[currentSectionIndex];
+  const totalSections = questionSections.length;
+  const progress = ((currentSectionIndex + 1) / totalSections) * 100;
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  // Check if a question should be visible based on conditional rules
+  const isQuestionVisible = (question: Question): boolean => {
+    if (!question.conditionalOn) return true;
+    const { questionId, values } = question.conditionalOn;
+    const answer = answers[questionId];
+    if (!answer) return false;
+    return values.includes(answer as string);
   };
 
-  const handleAnswerChange = (index: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      answers: prev.answers.map((a, i) => (i === index ? value : a)),
-    }));
+  // Get visible questions for current section
+  const visibleQuestions = useMemo(() => {
+    return currentSection.questions.filter(isQuestionVisible);
+  }, [currentSection, answers]);
+
+  // Calculate total price
+  const priceBreakdown = useMemo(() => {
+    const breakdown: { label: string; amount: number }[] = [];
+    let additionalTotal = 0;
+
+    questionSections.forEach(section => {
+      section.questions.forEach(question => {
+        if (!question.priceEffect) return;
+        const answer = answers[question.id];
+        if (!answer) return;
+
+        let price = 0;
+        if (question.priceEffect.type === 'perAnswer' && question.priceEffect.values) {
+          price = question.priceEffect.values[answer as string] || 0;
+        }
+
+        if (price > 0) {
+          breakdown.push({
+            label: question.text.length > 20 ? question.text.substring(0, 20) + '...' : question.text,
+            amount: price,
+          });
+          additionalTotal += price;
+        }
+      });
+    });
+
+    return { breakdown, additionalTotal, total: BASE_PRICE + additionalTotal };
+  }, [answers]);
+
+  const handleAnswer = (questionId: string, value: string | string[]) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[questionId];
+      return newErrors;
+    });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const validateSection = (): boolean => {
+    const newErrors: Record<string, string> = {};
 
-    if (!formData.customer_name || !formData.customer_email) {
-      setError('이름과 이메일은 필수 입력 항목입니다.');
-      return;
-    }
+    visibleQuestions.forEach(question => {
+      if (question.required) {
+        const answer = answers[question.id];
+        if (!answer || (Array.isArray(answer) && answer.length === 0)) {
+          newErrors[question.id] = '필수 항목입니다.';
+        }
+      }
+    });
 
-    const emptyAnswers = formData.answers.filter(a => !a.trim()).length;
-    if (emptyAnswers > 0) {
-      setError('모든 설문 질문에 답변해주세요.');
-      return;
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (!validateSection()) return;
+
+    if (currentSectionIndex < totalSections - 1) {
+      setCurrentSectionIndex(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  const handlePrev = () => {
+    if (currentSectionIndex > 0) {
+      setCurrentSectionIndex(prev => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!validateSection()) return;
 
     setIsSubmitting(true);
 
     try {
-      const responses = SURVEY_QUESTIONS.map((question, index) => ({
-        question,
-        answer: formData.answers[index],
+      const surveyAnswers: SurveyAnswer[] = Object.entries(answers).map(([questionId, value]) => ({
+        questionId,
+        value,
       }));
 
       await createSurvey({
-        customer_name: formData.customer_name,
-        customer_email: formData.customer_email,
-        customer_phone: formData.customer_phone || undefined,
-        company_name: formData.company_name || undefined,
-        responses,
+        customerInfo: {
+          name: answers.name as string,
+          email: answers.email as string,
+          phone: answers.phone as string,
+          company: answers.companyName1 as string,
+        },
+        answers: surveyAnswers,
+        totalPrice: priceBreakdown.total,
       });
 
       navigate('/success');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '설문 제출에 실패했습니다.');
+    } catch (error) {
+      console.error('Submit error:', error);
+      alert('제출 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div>
-      <div className="card">
-        <h2>고객 설문조사</h2>
-        <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-          소중한 의견을 남겨주시면 서비스 개선에 반영하겠습니다.
-        </p>
+  const renderQuestion = (question: Question) => {
+    const value = answers[question.id] || '';
+    const error = errors[question.id];
+    const hasPriceEffect = question.priceEffect && question.priceEffect.values;
 
-        {error && <div className="message message-error">{error}</div>}
+    return (
+      <div key={question.id} className={`question fade-in ${error ? 'has-error' : ''}`}>
+        <label className="question-label">
+          <span>{question.text}</span>
+          {question.required && <span className="required">*</span>}
+          {hasPriceEffect && <span className="question-price-tag">가격 영향</span>}
+        </label>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-            <div className="form-group">
-              <label>이름 *</label>
-              <input
-                type="text"
-                value={formData.customer_name}
-                onChange={e => handleInputChange('customer_name', e.target.value)}
-                placeholder="홍길동"
-              />
-            </div>
+        {question.description && (
+          <p className="question-description">{question.description}</p>
+        )}
 
-            <div className="form-group">
-              <label>이메일 *</label>
-              <input
-                type="email"
-                value={formData.customer_email}
-                onChange={e => handleInputChange('customer_email', e.target.value)}
-                placeholder="example@email.com"
-              />
-            </div>
+        {renderInput(question, value, error)}
 
-            <div className="form-group">
-              <label>연락처</label>
-              <input
-                type="tel"
-                value={formData.customer_phone}
-                onChange={e => handleInputChange('customer_phone', e.target.value)}
-                placeholder="010-1234-5678"
-              />
-            </div>
+        {error && <p style={{ color: 'var(--color-error)', fontSize: '0.85rem', marginTop: '8px' }}>{error}</p>}
+      </div>
+    );
+  };
 
-            <div className="form-group">
-              <label>회사명</label>
-              <input
-                type="text"
-                value={formData.company_name}
-                onChange={e => handleInputChange('company_name', e.target.value)}
-                placeholder="회사명 (선택)"
-              />
-            </div>
-          </div>
+  const renderInput = (question: Question, value: string | string[], _error?: string) => {
+    switch (question.type) {
+      case 'text':
+      case 'email':
+      case 'tel':
+      case 'number':
+      case 'date':
+        return (
+          <input
+            type={question.type}
+            value={value as string}
+            onChange={e => handleAnswer(question.id, e.target.value)}
+            placeholder={question.placeholder}
+          />
+        );
 
-          <div className="survey-questions">
-            <h3 style={{ marginBottom: '20px', color: '#1f2937' }}>설문 질문</h3>
-
-            {SURVEY_QUESTIONS.map((question, index) => (
-              <div key={index} className="question-card">
-                <h4>Q{index + 1}. {question}</h4>
-                <textarea
-                  value={formData.answers[index]}
-                  onChange={e => handleAnswerChange(index, e.target.value)}
-                  placeholder="답변을 입력해주세요..."
-                  rows={3}
-                />
-              </div>
+      case 'dropdown':
+        return (
+          <select
+            value={value as string}
+            onChange={e => handleAnswer(question.id, e.target.value)}
+          >
+            <option value="">선택해주세요</option>
+            {question.options?.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+                {option.price ? ` (+${(option.price / 1000).toLocaleString()}천원)` : ''}
+              </option>
             ))}
-          </div>
+          </select>
+        );
 
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? '제출 중...' : '설문 제출하기'}
+      case 'yesno':
+        return (
+          <div className="yesno-group">
+            <button
+              type="button"
+              className={`yesno-btn ${value === 'yes' ? 'selected yes' : ''}`}
+              onClick={() => handleAnswer(question.id, 'yes')}
+            >
+              예
+            </button>
+            <button
+              type="button"
+              className={`yesno-btn ${value === 'no' ? 'selected no' : ''}`}
+              onClick={() => handleAnswer(question.id, 'no')}
+            >
+              아니오
             </button>
           </div>
-        </form>
+        );
+
+      case 'radio':
+        return (
+          <div className="option-group">
+            {question.options?.map(option => (
+              <label
+                key={option.value}
+                className={`option-item ${value === option.value ? 'selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name={question.id}
+                  value={option.value}
+                  checked={value === option.value}
+                  onChange={e => handleAnswer(question.id, e.target.value)}
+                />
+                <span className="option-label">{option.label}</span>
+                {option.price !== undefined && option.price > 0 && (
+                  <span className="option-price">+{(option.price / 1000).toLocaleString()}천원</span>
+                )}
+              </label>
+            ))}
+          </div>
+        );
+
+      case 'checkbox':
+        const selectedValues = (value as string[]) || [];
+        return (
+          <div className="option-group">
+            {question.options?.map(option => (
+              <label
+                key={option.value}
+                className={`option-item ${selectedValues.includes(option.value) ? 'selected' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  value={option.value}
+                  checked={selectedValues.includes(option.value)}
+                  onChange={e => {
+                    const newValues = e.target.checked
+                      ? [...selectedValues, option.value]
+                      : selectedValues.filter(v => v !== option.value);
+                    handleAnswer(question.id, newValues);
+                  }}
+                />
+                <span className="option-label">{option.label}</span>
+                {option.price !== undefined && option.price > 0 && (
+                  <span className="option-price">+{(option.price / 1000).toLocaleString()}천원</span>
+                )}
+              </label>
+            ))}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const formatPrice = (amount: number) => {
+    return (amount / 10000).toLocaleString() + '만원';
+  };
+
+  return (
+    <div className="survey-layout">
+      <div className="survey-main">
+        <div className="card">
+          {/* Progress */}
+          <div className="progress-container">
+            <div className="progress-header">
+              <span className="progress-title">설문 진행률</span>
+              <span className="progress-text">{currentSectionIndex + 1} / {totalSections}</span>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          {/* Section Header */}
+          <div className="section-header">
+            <h2 className="section-title">{currentSection.title}</h2>
+            {currentSection.description && (
+              <p className="section-description">{currentSection.description}</p>
+            )}
+          </div>
+
+          {/* Questions */}
+          <div className="questions">
+            {visibleQuestions.map(renderQuestion)}
+          </div>
+
+          {/* Navigation */}
+          <div className="nav-buttons">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handlePrev}
+              disabled={currentSectionIndex === 0}
+            >
+              이전
+            </button>
+
+            {currentSectionIndex < totalSections - 1 ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleNext}
+              >
+                다음
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-success btn-lg"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? '제출 중...' : '설문 제출하기'}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Price Sidebar */}
+      <aside className="price-sidebar">
+        <div className="price-card">
+          <p className="price-card-title">예상 서비스 비용</p>
+          <p className="price-total">
+            <span className="currency">₩</span>
+            {priceBreakdown.total.toLocaleString()}
+          </p>
+
+          <div className="price-breakdown">
+            <div className="price-item base">
+              <span className="price-item-label">기본 서비스</span>
+              <span className="price-item-value">{formatPrice(BASE_PRICE)}</span>
+            </div>
+
+            {priceBreakdown.breakdown.map((item, index) => (
+              <div key={index} className="price-item">
+                <span className="price-item-label">{item.label}</span>
+                <span className="price-item-value">+{formatPrice(item.amount)}</span>
+              </div>
+            ))}
+
+            {priceBreakdown.breakdown.length === 0 && (
+              <p style={{ opacity: 0.7, fontSize: '0.85rem', textAlign: 'center', padding: '8px 0' }}>
+                추가 옵션을 선택하면<br />여기에 표시됩니다
+              </p>
+            )}
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

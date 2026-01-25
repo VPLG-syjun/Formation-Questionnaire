@@ -4,8 +4,56 @@ import db from '../database';
 import { Survey, CreateSurveyDTO, UpdateSurveyDTO } from '../models/survey';
 import { generateSurveyPDF } from '../services/pdfGenerator';
 import path from 'path';
+import fs from 'fs';
 
 const router = Router();
+
+interface DBSurvey {
+  id: string;
+  customer_info: string;
+  answers: string;
+  total_price: number;
+  status: string;
+  admin_notes: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  document_generated_at: string | null;
+}
+
+// Helper to convert DB row to Survey object
+const dbToSurvey = (row: DBSurvey): Survey => ({
+  id: row.id,
+  customerInfo: JSON.parse(row.customer_info),
+  answers: JSON.parse(row.answers),
+  totalPrice: row.total_price,
+  status: row.status as Survey['status'],
+  adminNotes: row.admin_notes || undefined,
+  createdAt: row.created_at,
+  reviewedAt: row.reviewed_at || undefined,
+  documentGeneratedAt: row.document_generated_at || undefined,
+});
+
+// Get statistics - must be before /:id route
+router.get('/stats/overview', (_req: Request, res: Response) => {
+  try {
+    const total = db.prepare('SELECT COUNT(*) as count FROM surveys').get() as { count: number };
+    const pending = db.prepare("SELECT COUNT(*) as count FROM surveys WHERE status = 'pending'").get() as { count: number };
+    const approved = db.prepare("SELECT COUNT(*) as count FROM surveys WHERE status = 'approved'").get() as { count: number };
+    const rejected = db.prepare("SELECT COUNT(*) as count FROM surveys WHERE status = 'rejected'").get() as { count: number };
+    const totalRevenue = db.prepare("SELECT COALESCE(SUM(total_price), 0) as sum FROM surveys WHERE status = 'approved'").get() as { sum: number };
+
+    res.json({
+      total: total.count,
+      pending: pending.count,
+      approved: approved.count,
+      rejected: rejected.count,
+      totalRevenue: totalRevenue.sum,
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: '통계를 불러오는데 실패했습니다.' });
+  }
+});
 
 // Get all surveys (for admin)
 router.get('/', (req: Request, res: Response) => {
@@ -19,14 +67,10 @@ router.get('/', (req: Request, res: Response) => {
       params = [status];
     }
 
-    const surveys = db.prepare(query).all(...params) as Array<Survey & { responses: string }>;
+    const rows = db.prepare(query).all(...params) as DBSurvey[];
+    const surveys = rows.map(dbToSurvey);
 
-    const formattedSurveys = surveys.map(survey => ({
-      ...survey,
-      responses: JSON.parse(survey.responses)
-    }));
-
-    res.json(formattedSurveys);
+    res.json(surveys);
   } catch (error) {
     console.error('Error fetching surveys:', error);
     res.status(500).json({ error: '설문 목록을 불러오는데 실패했습니다.' });
@@ -36,16 +80,13 @@ router.get('/', (req: Request, res: Response) => {
 // Get single survey
 router.get('/:id', (req: Request, res: Response) => {
   try {
-    const survey = db.prepare('SELECT * FROM surveys WHERE id = ?').get(req.params.id) as (Survey & { responses: string }) | undefined;
+    const row = db.prepare('SELECT * FROM surveys WHERE id = ?').get(req.params.id) as DBSurvey | undefined;
 
-    if (!survey) {
+    if (!row) {
       return res.status(404).json({ error: '설문을 찾을 수 없습니다.' });
     }
 
-    res.json({
-      ...survey,
-      responses: JSON.parse(survey.responses)
-    });
+    res.json(dbToSurvey(row));
   } catch (error) {
     console.error('Error fetching survey:', error);
     res.status(500).json({ error: '설문을 불러오는데 실패했습니다.' });
@@ -58,23 +99,21 @@ router.post('/', (req: Request, res: Response) => {
     const data: CreateSurveyDTO = req.body;
 
     // Validation
-    if (!data.customer_name || !data.customer_email || !data.responses) {
+    if (!data.customerInfo || !data.customerInfo.email || !data.answers) {
       return res.status(400).json({ error: '필수 항목을 입력해주세요.' });
     }
 
     const id = uuidv4();
     const stmt = db.prepare(`
-      INSERT INTO surveys (id, customer_name, customer_email, customer_phone, company_name, responses)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO surveys (id, customer_info, answers, total_price)
+      VALUES (?, ?, ?, ?)
     `);
 
     stmt.run(
       id,
-      data.customer_name,
-      data.customer_email,
-      data.customer_phone || null,
-      data.company_name || null,
-      JSON.stringify(data.responses)
+      JSON.stringify(data.customerInfo),
+      JSON.stringify(data.answers),
+      data.totalPrice || 0
     );
 
     res.status(201).json({ id, message: '설문이 성공적으로 제출되었습니다.' });
@@ -104,9 +143,9 @@ router.patch('/:id', (req: Request, res: Response) => {
       updates.push('reviewed_at = CURRENT_TIMESTAMP');
     }
 
-    if (data.admin_notes !== undefined) {
+    if (data.adminNotes !== undefined) {
       updates.push('admin_notes = ?');
-      values.push(data.admin_notes);
+      values.push(data.adminNotes);
     }
 
     if (updates.length === 0) {
@@ -127,18 +166,14 @@ router.patch('/:id', (req: Request, res: Response) => {
 // Generate PDF document
 router.post('/:id/generate-pdf', async (req: Request, res: Response) => {
   try {
-    const survey = db.prepare('SELECT * FROM surveys WHERE id = ?').get(req.params.id) as (Survey & { responses: string }) | undefined;
+    const row = db.prepare('SELECT * FROM surveys WHERE id = ?').get(req.params.id) as DBSurvey | undefined;
 
-    if (!survey) {
+    if (!row) {
       return res.status(404).json({ error: '설문을 찾을 수 없습니다.' });
     }
 
-    const formattedSurvey: Survey = {
-      ...survey,
-      responses: JSON.parse(survey.responses)
-    };
-
-    const pdfPath = await generateSurveyPDF(formattedSurvey);
+    const survey = dbToSurvey(row);
+    const pdfPath = await generateSurveyPDF(survey);
 
     // Update document generation timestamp
     db.prepare('UPDATE surveys SET document_generated_at = CURRENT_TIMESTAMP WHERE id = ?').run(req.params.id);
@@ -156,14 +191,19 @@ router.post('/:id/generate-pdf', async (req: Request, res: Response) => {
 // Download PDF
 router.get('/:id/download', (req: Request, res: Response) => {
   try {
-    const survey = db.prepare('SELECT * FROM surveys WHERE id = ?').get(req.params.id) as Survey | undefined;
+    const row = db.prepare('SELECT * FROM surveys WHERE id = ?').get(req.params.id) as DBSurvey | undefined;
 
-    if (!survey) {
+    if (!row) {
       return res.status(404).json({ error: '설문을 찾을 수 없습니다.' });
     }
 
     const documentsDir = path.join(__dirname, '../../documents');
-    const files = require('fs').readdirSync(documentsDir);
+
+    if (!fs.existsSync(documentsDir)) {
+      return res.status(404).json({ error: 'PDF 파일을 찾을 수 없습니다. 먼저 문서를 생성해주세요.' });
+    }
+
+    const files = fs.readdirSync(documentsDir);
     const pdfFile = files.find((f: string) => f.startsWith(`survey_${req.params.id}`));
 
     if (!pdfFile) {
@@ -190,26 +230,6 @@ router.delete('/:id', (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting survey:', error);
     res.status(500).json({ error: '설문 삭제에 실패했습니다.' });
-  }
-});
-
-// Get statistics
-router.get('/stats/overview', (req: Request, res: Response) => {
-  try {
-    const total = db.prepare('SELECT COUNT(*) as count FROM surveys').get() as { count: number };
-    const pending = db.prepare("SELECT COUNT(*) as count FROM surveys WHERE status = 'pending'").get() as { count: number };
-    const approved = db.prepare("SELECT COUNT(*) as count FROM surveys WHERE status = 'approved'").get() as { count: number };
-    const rejected = db.prepare("SELECT COUNT(*) as count FROM surveys WHERE status = 'rejected'").get() as { count: number };
-
-    res.json({
-      total: total.count,
-      pending: pending.count,
-      approved: approved.count,
-      rejected: rejected.count
-    });
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({ error: '통계를 불러오는데 실패했습니다.' });
   }
 });
 
