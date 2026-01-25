@@ -1,0 +1,28 @@
+section,id,type,text,description,placeholder,required,options,price,conditionalOn,documentField
+기본 정보,email,email,이메일 주소,계약서 및 서류 발송에 사용됩니다.,example@email.com,Y,,,,customerEmail
+기본 정보,name,text,성함,,홍길동,Y,,,,customerName
+기본 정보,phone,tel,연락처,,010-1234-5678,Y,,,,customerPhone
+회사 정보,companyType,dropdown,설립 형태를 선택해주세요,,,Y,"llc:LLC (유한책임회사),corp:Corporation (주식회사),nonprofit:Non-Profit (비영리)","llc:0,corp:200000,nonprofit:300000",,companyType
+회사 정보,companyName1,text,희망하는 회사명 (1순위),실제 운영할 회사명을 입력해주세요.,ABC Company LLC,Y,,,,companyName1
+회사 정보,companyName2,text,희망하는 회사명 (2순위),,ABC Enterprise LLC,N,,,,companyName2
+회사 정보,companyName3,text,희망하는 회사명 (3순위),,ABC Holdings LLC,N,,,,companyName3
+회사 정보,state,dropdown,설립 주(State)를 선택해주세요,델라웨어주가 가장 많이 선택됩니다.,,Y,"DE:Delaware (델라웨어),WY:Wyoming (와이오밍),NV:Nevada (네바다),CA:California (캘리포니아),NY:New York (뉴욕),TX:Texas (텍사스)","DE:0,WY:0,NV:50000,CA:100000,NY:100000,TX:50000",,state
+주소 정보,useRegisteredAgent,yesno,등록 대리인(Registered Agent) 서비스를 이용하시겠습니까?,미국 내 주소가 없는 경우 필수입니다. 연 $150 추가 비용이 발생합니다.,,Y,,"yes:150000,no:0",,
+주소 정보,hasUSAddress,yesno,미국 내 사업장 주소가 있으신가요?,,,Y,,,,
+주소 정보,usAddress,text,미국 사업장 주소,,"123 Main St, Suite 100, City, State ZIP",Y,,,hasUSAddress=yes,usAddress
+주소 정보,krAddress,text,한국 주소 (영문),,"123 Gangnam-daero, Gangnam-gu, Seoul, Korea",Y,,,,krAddress
+구성원 정보,memberCount,dropdown,멤버/주주 수를 선택해주세요,,,Y,"1:1명,2:2명,3:3명,4+:4명 이상","1:0,2:50000,3:100000,4+:150000",,memberCount
+구성원 정보,member1Name,text,대표 멤버 성함 (영문),,Hong Gil Dong,Y,,,,member1Name
+구성원 정보,member1Title,dropdown,대표 멤버 직책,,,Y,"CEO:CEO (최고경영자),President:President (사장),Manager:Managing Member (경영 멤버),Director:Director (이사)",,,member1Title
+구성원 정보,member2Name,text,추가 멤버 2 성함 (영문),,Kim Chul Soo,N,,,"memberCount=2,3,4+",member2Name
+구성원 정보,member3Name,text,추가 멤버 3 성함 (영문),,Lee Young Hee,N,,,"memberCount=3,4+",member3Name
+금융 서비스,needBankAccount,yesno,미국 법인 은행 계좌 개설 대행이 필요하신가요?,대행 수수료 $200이 추가됩니다.,,Y,,"yes:200000,no:0",,
+금융 서비스,bankPreference,dropdown,선호하는 은행을 선택해주세요,,,Y,"mercury:Mercury (온라인 은행 추천),chase:Chase Bank,bofa:Bank of America,relay:Relay (온라인 은행),other:기타 (상담 필요)",,needBankAccount=yes,bankPreference
+금융 서비스,needEIN,yesno,EIN (고용주 식별번호) 신청 대행이 필요하신가요?,은행 계좌 개설 및 세금 신고에 필수입니다. 대행비 $50 추가.,,Y,,"yes:50000,no:0",,
+추가 서비스,needOperatingAgreement,yesno,Operating Agreement (운영 계약서) 작성이 필요하신가요?,LLC 운영에 필수적인 문서입니다. 작성비 $100 추가.,,Y,,"yes:100000,no:0",,
+추가 서비스,needAnnualReport,yesno,연간 보고서(Annual Report) 대행 서비스가 필요하신가요?,매년 주정부에 제출해야 하는 보고서입니다. 연 $100 추가.,,Y,,"yes:100000,no:0",,
+추가 서비스,needVirtualMailbox,yesno,가상 우편함(Virtual Mailbox) 서비스가 필요하신가요?,미국 우편물을 스캔하여 이메일로 전달해드립니다. 월 $30 추가.,,Y,,"yes:360000,no:0",,
+추가 서비스,expeditedProcessing,yesno,신속 처리(Expedited Processing)를 원하시나요?,일반 2-3주 → 신속 3-5일. 추가 비용 $150.,,Y,,"yes:150000,no:0",,
+최종 확인,referralSource,dropdown,저희 서비스를 어떻게 알게 되셨나요?,,,N,"search:검색 (구글 네이버 등),sns:SNS (인스타그램 페이스북 등),youtube:유튜브,referral:지인 추천,blog:블로그,other:기타",,,
+최종 확인,additionalNotes,text,추가로 문의하실 사항이 있으신가요?,,궁금하신 점을 자유롭게 작성해주세요.,N,,,,
+최종 확인,agreeTerms,yesno,서비스 이용약관 및 개인정보 처리방침에 동의하시나요?,동의하셔야 서비스 이용이 가능합니다.,,Y,,,,
