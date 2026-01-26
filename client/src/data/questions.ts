@@ -495,7 +495,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder2Cash',
         type: 'text',
-        text: '창업자 2가 출자할 창업 자금 금액을 기재해주세요.',
+        text: '창업자 2가 출자할 창업 자금 금액($)을 기재해주세요.',
         required: true,
         conditionalOn: {
           questionId: 'founderCount',
@@ -541,7 +541,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder3Cash',
         type: 'text',
-        text: '창업자 3이 출자할 창업 자금 금액을 기재해주세요.',
+        text: '창업자 3이 출자할 창업 자금 금액($)을 기재해주세요.',
         required: true,
         conditionalOn: {
           questionId: 'founderCount',
@@ -587,7 +587,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder4Cash',
         type: 'text',
-        text: '창업자 4가 출자할 창업 자금 금액을 기재해주세요.',
+        text: '창업자 4가 출자할 창업 자금 금액($)을 기재해주세요.',
         required: true,
         conditionalOn: {
           questionId: 'founderCount',
@@ -600,6 +600,10 @@ export const questionSections: QuestionSection[] = [
         type: 'yesno',
         text: '각 창업자는 출자한 창립 자금에 비례하여 주식을 소유하나요?',
         required: true,
+        conditionalOn: {
+          questionId: 'founderCount',
+          values: ['2', '3', '4'],
+        },
         documentField: 'Share',
       },
       {
