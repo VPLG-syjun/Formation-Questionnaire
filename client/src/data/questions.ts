@@ -17,13 +17,6 @@ export const questionSections: QuestionSection[] = [
         required: true,
         documentField: 'customerEmail',
       },
-    ],
-  },
-  {
-    id: 'legal',
-    title: '법적 정보',
-    description: '',
-    questions: [
       {
         id: 'agreeTerms',
         type: 'dropdown',
@@ -31,8 +24,8 @@ export const questionSections: QuestionSection[] = [
         description: '본 서비스를 이용함으로써, 이용자는 본 웹사이트에서 제공되는 정보는 변호사-의뢰인 관계에 따른 것이거나 법률적 조언을 주기 위한 것이 아니며, 모든 게재된 정보를 포함한 본 웹사이트는 변호사로부터 제공된 법률적 조언을 대체할 수 없다는 것에 동의하게 됩니다.\n\n본 웹사이트에 게재된 모든 자료들은 저작권법상 보호를 받는 대상이며, 권한 없는 복제나 상업적 서비스로의 어떠한 연결도 금지됩니다.',
         required: true,
         options: [
-          { value: 'accept', label: 'Accept' },
-          { value: 'deny', label: 'Deny' },
+          { value: '1', label: 'Accept' },
+          { value: '2', label: 'Deny' },
         ],
         documentField: 'agreeTerms',
       },
@@ -49,16 +42,16 @@ export const questionSections: QuestionSection[] = [
         text: '설립 형태를 선택해주세요',
         required: true,
         options: [
-          { value: 'llc', label: 'LLC (유한책임회사)', price: 1900 },
+          { value: 'lic', label: 'LLC (유한책임회사)', price: 1900 },
           { value: 'corp', label: 'Corporation (주식회사)', price: 1900 },
         ],
         priceEffect: {
           type: 'perAnswer',
-          values: { llc: 1900, corp: 1900 },
+          values: { lic: 1900, corp: 1900 },
         },
         conditionalOn: {
           questionId: 'agreeTerms',
-          values: ['accept'],
+          values: ['1'],
         },
         documentField: 'companyType',
       },
@@ -91,6 +84,13 @@ export const questionSections: QuestionSection[] = [
         required: false,
         documentField: 'info',
       },
+    ],
+  },
+  {
+    id: 'address',
+    title: '주소 정보',
+    description: '',
+    questions: [
       {
         id: 'state',
         type: 'text',
@@ -99,13 +99,6 @@ export const questionSections: QuestionSection[] = [
         required: true,
         documentField: 'state',
       },
-    ],
-  },
-  {
-    id: 'address',
-    title: '주소 정보',
-    description: '',
-    questions: [
       {
         id: 'qual1',
         type: 'yesno',
@@ -323,7 +316,7 @@ export const questionSections: QuestionSection[] = [
         type: 'text',
         text: 'CEO 성함(영문)',
         placeholder: 'Hong Gil Dong',
-        required: true,
+        required: false,
         documentField: 'CEOName',
       },
       {
@@ -440,15 +433,17 @@ export const questionSections: QuestionSection[] = [
         id: 'founder1Address',
         type: 'text',
         text: '창업자 주소(영문)',
-        required: true,
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
+        required: false,
         documentField: 'Founder1Address',
       },
       {
         id: 'founder1Email',
         type: 'email',
         text: '창업자 이메일 주소',
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
         placeholder: 'example@email.com',
-        required: true,
+        required: false,
         documentField: 'Founder1Email',
       },
       {
@@ -474,7 +469,8 @@ export const questionSections: QuestionSection[] = [
         id: 'founder2Address',
         type: 'text',
         text: '창업자 2 주소(영문)',
-        required: true,
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
+        required: false,
         conditionalOn: {
           questionId: 'founderCount',
           values: ['2', '3', '4'],
@@ -485,8 +481,9 @@ export const questionSections: QuestionSection[] = [
         id: 'founder2Email',
         type: 'email',
         text: '창업자 2 이메일 주소',
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
         placeholder: 'example@email.com',
-        required: true,
+        required: false,
         conditionalOn: {
           questionId: 'founderCount',
           values: ['2', '3', '4'],
@@ -520,7 +517,8 @@ export const questionSections: QuestionSection[] = [
         id: 'founder3Address',
         type: 'text',
         text: '창업자 3 주소(영문)',
-        required: true,
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
+        required: false,
         conditionalOn: {
           questionId: 'founderCount',
           values: ['3', '4'],
@@ -531,8 +529,9 @@ export const questionSections: QuestionSection[] = [
         id: 'founder3Email',
         type: 'email',
         text: '창업자 3 이메일 주소',
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
         placeholder: 'example@email.com',
-        required: true,
+        required: false,
         conditionalOn: {
           questionId: 'founderCount',
           values: ['3', '4'],
@@ -566,7 +565,8 @@ export const questionSections: QuestionSection[] = [
         id: 'founder4Address',
         type: 'text',
         text: '창업자 4 주소(영문)',
-        required: true,
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
+        required: false,
         conditionalOn: {
           questionId: 'founderCount',
           values: ['4'],
@@ -577,8 +577,9 @@ export const questionSections: QuestionSection[] = [
         id: 'founder4Email',
         type: 'email',
         text: '창업자 4 이메일 주소',
+        description: '중복되는 경우 기재하지 않으셔도 됩니다.',
         placeholder: 'example@email.com',
-        required: true,
+        required: false,
         conditionalOn: {
           questionId: 'founderCount',
           values: ['4'],
@@ -661,23 +662,23 @@ export const questionSections: QuestionSection[] = [
     questions: [
       {
         id: 'bankConsent',
-        type: 'yesno',
-        text: '회사 계좌를 개설할 이사진의 성함을 기재해주세요.',
+        type: 'text',
+        text: '회사 계좌를 개설할 이사/임원의 영문 성명을 기재해주세요.',
         required: true,
         documentField: 'BankConsent',
       },
       {
         id: 'bankConsent2',
         type: 'text',
-        text: '회사 계정의 은행 권한을 승인할 이사진의 성함을 기재해주세요.',
+        text: '회사 계좌의 은행 권한을 수여 받을 이사/임원의 이름/성명을 기재해주세요.',
         required: true,
         documentField: 'BankConsent2',
       },
     ],
   },
   {
-    id: 'documents',
-    title: '문서 서비스',
+    id: 'additional',
+    title: '추가 서비스',
     description: '',
     questions: [
       {
@@ -692,13 +693,6 @@ export const questionSections: QuestionSection[] = [
         },
         documentField: 'StockOption',
       },
-    ],
-  },
-  {
-    id: 'additional',
-    title: '기타 서비스',
-    description: '',
-    questions: [
       {
         id: 'expeditedProcessing',
         type: 'yesno',
