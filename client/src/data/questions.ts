@@ -94,8 +94,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'state',
         type: 'text',
-        text: '스테이트 오브 일리노이즈를 설립하는 주(State)를 기재해주세요.',
-        description: '설립하는 주 외 회사를 실제 운영할 계획인 주가 있다면 기재해주세요.',
+        text: '회사 설립을 희망하는 주(State)를 기재해주세요.',
         required: true,
         documentField: 'state',
       },
@@ -109,7 +108,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'qual1',
         type: 'yesno',
-        text: '등록(Qualification) 대행이 필요하신가요?',
+        text: '설립한 주 외 회사를 실제 운영할 계획인 주에 등록(Qualification) 대행이 필요하신가요?',
         required: true,
         priceEffect: {
           type: 'perAnswer',
@@ -165,7 +164,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'directorCount',
         type: 'dropdown',
-        text: '이사진(Directors)를 구성할 이사의 수를 선택해주세요 5명 이상인 경우 info@firstregister.com으로 문의해주세요.',
+        text: '이사회(Board of Directors)를 구성할 이사의 수를 선택해주세요 5명 이상인 경우 info@firstregister.com으로 문의해주세요.',
         required: true,
         options: [
           { value: '1', label: '1명' },
@@ -178,7 +177,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'director1Name',
         type: 'text',
-        text: '이사 성함(영문)',
+        text: '이사 성명 (영문)',
         placeholder: 'Hong Gil Dong',
         required: true,
         documentField: 'director1Name',
@@ -201,7 +200,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'director2Name',
         type: 'text',
-        text: '이사 2 성함 (영문)',
+        text: '이사 2 성명 (영문)',
         placeholder: 'Kim Chul Soo',
         required: true,
         conditionalOn: {
@@ -236,7 +235,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'director3Name',
         type: 'text',
-        text: '이사 3 성함 (영문)',
+        text: '이사 3 성명 (영문)',
         placeholder: 'Lee Young Hee',
         required: true,
         conditionalOn: {
@@ -271,7 +270,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'director4Name',
         type: 'text',
-        text: '이사 4 성함 (영문)',
+        text: '이사 4 성명 (영문)',
         placeholder: 'Park So Hyun',
         required: true,
         conditionalOn: {
@@ -313,7 +312,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'chairmanName',
         type: 'text',
-        text: 'Chairman(의장)를 별도로 임명하실 경우 이름을 기재해주세요.',
+        text: 'Chairman of Board(의장)를 별도로 임명하실 경우 이름을 기재해주세요.',
         placeholder: 'Hong Gil Dong',
         required: false,
         documentField: 'ChairmanName',
@@ -321,7 +320,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'ceoName',
         type: 'text',
-        text: 'CEO 성함(영문)',
+        text: 'CEO 성명 (영문)',
         placeholder: 'Hong Gil Dong',
         required: true,
         documentField: 'CEOName',
@@ -346,10 +345,10 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'cfoName',
         type: 'text',
-        text: 'CFO 성함(영문)',
+        text: 'CFO 성명(영문)',
         description: 'CEO와 중임 가능합니다.',
         placeholder: 'Hong Gil Dong',
-        required: false,
+        required: true,
         documentField: 'CFOName',
       },
       {
@@ -372,10 +371,10 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'csName',
         type: 'text',
-        text: 'Corporate Secretary 성함(영문)',
+        text: 'Corporate Secretary 성명 (영문)',
         description: 'CEO, CFO와 중임 가능합니다.',
         placeholder: 'Hong Gil Dong',
-        required: false,
+        required: true,
         documentField: 'CSName',
       },
       {
@@ -431,7 +430,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder1Name',
         type: 'text',
-        text: '창업자 성함 (영문)',
+        text: '창업자 성명 (영문)',
         placeholder: 'Hong Gil Dong',
         required: true,
         documentField: 'Founder1Name',
@@ -454,14 +453,14 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder1Cash',
         type: 'text',
-        text: '창업자 1 출자할 창업 자금 금액을 기재해주세요.',
+        text: '창업자가 출자할 창업 자금 금액($)을 기재해주세요.',
         required: true,
         documentField: 'Founder1Cash',
       },
       {
         id: 'founder2Name',
         type: 'text',
-        text: '창업자 2 성함 (영문)',
+        text: '창업자 2 성명 (영문)',
         placeholder: 'Kim Chul Soo',
         required: true,
         conditionalOn: {
@@ -507,7 +506,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder3Name',
         type: 'text',
-        text: '창업자 3 성함 (영문)',
+        text: '창업자 3 성명 (영문)',
         placeholder: 'Lee Young Hee',
         required: true,
         conditionalOn: {
@@ -553,7 +552,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder4Name',
         type: 'text',
-        text: '창업자 4 성함 (영문)',
+        text: '창업자 4 성명 (영문)',
         placeholder: 'Park So Hyun',
         required: true,
         conditionalOn: {
@@ -599,15 +598,14 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'share',
         type: 'yesno',
-        text: '각 창업자가 출자한 창립 자금에 비례대로 주식을 소유하나요?',
-        description: '각 창업자가 소유할 것으로 예정된 주식 비율을 기재해주세요.',
+        text: '각 창업자는 출자한 창립 자금에 비례하여 주식을 소유하나요?',
         required: true,
         documentField: 'Share',
       },
       {
         id: 'shareNot1',
         type: 'text',
-        text: '각 창업자가 회사 지분의 의결권 회사에 기여할 사항에 대해 설명해주세요.',
+        text: '각 창업자가 소유할 것으로 예정된 주식 비율을 기재해주세요.',
         required: true,
         conditionalOn: {
           questionId: 'share',
@@ -618,7 +616,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'shareNot2',
         type: 'text',
-        text: '각 창업자가 회사 지분의 의결권 회사에 기여할 사항에 대해 설명해주세요.',
+        text: '각 창업자가 회사 지분의 대가로 회사에 기여하였거나 기여할 사항에 대해 설명해주세요.',
         required: true,
         conditionalOn: {
           questionId: 'share',
@@ -629,7 +627,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'rs',
         type: 'yesno',
-        text: '창업자들 중 일부 또는 전부에게 회사의 Vesting스드로 떨 것인가요?',
+        text: '창업자들 중 일부 또는 전부에게 회사의 지분이 Vesting 되도록 할 것인가요?',
         required: true,
         documentField: 'RS',
       },
@@ -637,7 +635,7 @@ export const questionSections: QuestionSection[] = [
         id: 'vesting',
         type: 'text',
         text: 'Vesting Schedule을 기재해주세요.',
-        description: '일반 4/1 Cliff Vesting Schedule 적용됩니다.',
+        description: '통상 4/1 Cliff Vesting Schedule 적용합니다.',
         required: true,
         conditionalOn: {
           questionId: 'rs',
@@ -648,7 +646,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'cashin',
         type: 'text',
-        text: '창업팀이 이사 계획으로 창립 자금을 입금받을 대략적인 일자를 기재해주세요.',
+        text: '창업자들이 회사 계좌로 창립 자금을 입금할 대략적인 일자를 기재해주세요.',
         required: true,
         documentField: 'Cashin',
       },
@@ -661,15 +659,15 @@ export const questionSections: QuestionSection[] = [
     questions: [
       {
         id: 'bankConsent',
-        type: 'yesno',
-        text: '회사 계좌를 개설할 이사진의 성함을 기재해주세요.',
+        type: 'text',
+        text: '회사 계좌를 개설할 이사/임원의 성명을 기재해주세요.',
         required: true,
         documentField: 'BankConsent',
       },
       {
         id: 'bankConsent2',
         type: 'text',
-        text: '회사 계정의 은행 권한을 승인할 이사진의 성함을 기재해주세요.',
+        text: '회사 계정의 은행 권한을 승인할 이사/임원의 성명을 기재해주세요.',
         required: true,
         documentField: 'BankConsent2',
       },
@@ -683,7 +681,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'stockOption',
         type: 'yesno',
-        text: 'StockOption은 문서 유형 서비스 유무가 필요하신가요?',
+        text: 'Stock Option 운영을 위한 서류 준비가 필요하신가요?',
         description: 'Option Plan, Option Agreement 제공',
         required: true,
         priceEffect: {
