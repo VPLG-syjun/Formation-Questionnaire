@@ -10,6 +10,7 @@ function Navigation() {
   return (
     <header className="header">
       <div className="container">
+        <img src="/logo.png" alt="Logo" className="header-logo" />
         <h1>Formation Questionnaire</h1>
         <nav>
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
