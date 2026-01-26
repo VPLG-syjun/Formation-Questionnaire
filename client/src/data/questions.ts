@@ -302,13 +302,6 @@ export const questionSections: QuestionSection[] = [
         },
         documentField: 'director4Email',
       },
-    ],
-  },
-  {
-    id: 'officers',
-    title: '임원 정보',
-    description: '',
-    questions: [
       {
         id: 'chairmanName',
         type: 'text',
@@ -317,6 +310,13 @@ export const questionSections: QuestionSection[] = [
         required: false,
         documentField: 'ChairmanName',
       },
+    ],
+  },
+  {
+    id: 'officers',
+    title: '임원 정보',
+    description: '',
+    questions: [
       {
         id: 'ceoName',
         type: 'text',
