@@ -79,7 +79,7 @@ export default function SurveyDetail() {
   };
 
   const formatPrice = (amount: number) => {
-    return '₩' + amount.toLocaleString();
+    return '$' + amount.toLocaleString();
   };
 
   const getStatusBadge = (status: string) => {

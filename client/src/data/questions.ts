@@ -17,22 +17,6 @@ export const questionSections: QuestionSection[] = [
         required: true,
         documentField: 'customerEmail',
       },
-      {
-        id: 'name',
-        type: 'text',
-        text: '성함',
-        placeholder: '홍길동',
-        required: true,
-        documentField: 'customerName',
-      },
-      {
-        id: 'phone',
-        type: 'tel',
-        text: '연락처',
-        placeholder: '010-1234-5678',
-        required: true,
-        documentField: 'customerPhone',
-      },
     ],
   },
   {

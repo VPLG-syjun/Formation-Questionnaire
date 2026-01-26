@@ -180,7 +180,7 @@ export default function SurveyForm() {
             {question.options?.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
-                {option.price ? ` (+${(option.price / 1000).toLocaleString()}천원)` : ''}
+                {option.price ? ` (+$${option.price.toLocaleString()})` : ''}
               </option>
             ))}
           </select>
@@ -223,7 +223,7 @@ export default function SurveyForm() {
                 />
                 <span className="option-label">{option.label}</span>
                 {option.price !== undefined && option.price > 0 && (
-                  <span className="option-price">+{(option.price / 1000).toLocaleString()}천원</span>
+                  <span className="option-price">+${option.price.toLocaleString()}</span>
                 )}
               </label>
             ))}
@@ -252,7 +252,7 @@ export default function SurveyForm() {
                 />
                 <span className="option-label">{option.label}</span>
                 {option.price !== undefined && option.price > 0 && (
-                  <span className="option-price">+{(option.price / 1000).toLocaleString()}천원</span>
+                  <span className="option-price">+${option.price.toLocaleString()}</span>
                 )}
               </label>
             ))}
@@ -265,7 +265,7 @@ export default function SurveyForm() {
   };
 
   const formatPrice = (amount: number) => {
-    return (amount / 10000).toLocaleString() + '만원';
+    return '$' + amount.toLocaleString();
   };
 
   return (
@@ -334,7 +334,7 @@ export default function SurveyForm() {
         <div className="price-card">
           <p className="price-card-title">예상 서비스 비용</p>
           <p className="price-total">
-            <span className="currency">₩</span>
+            <span className="currency">$</span>
             {priceBreakdown.total.toLocaleString()}
           </p>
 
