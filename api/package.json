@@ -4,10 +4,10 @@
   "private": true,
   "dependencies": {
     "@vercel/kv": "^1.0.1",
-    "@vercel/node": "^3.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@types/uuid": "^9.0.0"
   }
 }

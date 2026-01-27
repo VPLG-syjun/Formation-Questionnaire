@@ -1,7 +1,19 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { IncomingMessage, ServerResponse } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { getAllSurveys, createSurvey } from '../_lib/db';
 import { Survey, CreateSurveyDTO } from '../_lib/types';
+
+interface VercelRequest extends IncomingMessage {
+  query: { [key: string]: string | string[] };
+  body: any;
+  method: string;
+}
+
+interface VercelResponse extends ServerResponse {
+  status: (code: number) => VercelResponse;
+  json: (data: any) => void;
+  send: (data: any) => void;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS 헤더
