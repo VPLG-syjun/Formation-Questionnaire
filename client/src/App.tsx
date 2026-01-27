@@ -10,7 +10,8 @@ function Navigation() {
   return (
     <header className="header">
       <div className="container">
-        <h1>설문 관리 시스템</h1>
+        <img src="/logo.png" alt="Logo" className="header-logo" />
+        <h1>Formation Questionnaire</h1>
         <nav>
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
             설문 작성
