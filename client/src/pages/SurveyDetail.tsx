@@ -1,18 +1,55 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Survey } from '../types/survey';
-import { fetchSurvey, updateSurvey, generatePDF, getDownloadURL } from '../services/api';
+import { fetchSurvey, updateSurvey } from '../services/api';
+import { questionSections } from '../data/questions';
+
+// 질문 ID로 질문 텍스트 찾기
+const getQuestionText = (questionId: string): string => {
+  for (const section of questionSections) {
+    const question = section.questions.find(q => q.id === questionId);
+    if (question) return question.text;
+  }
+  return questionId;
+};
+
+// 질문이 속한 섹션 찾기
+const getQuestionSection = (questionId: string): string => {
+  for (const section of questionSections) {
+    const question = section.questions.find(q => q.id === questionId);
+    if (question) return section.title;
+  }
+  return '기타';
+};
+
+// 답변값 포맷팅 (yes/no 등)
+const formatAnswerValue = (value: string | string[]): string => {
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+
+  const valueMap: Record<string, string> = {
+    'yes': '예',
+    'no': '아니오',
+    'accept': '동의',
+    'deny': '거절',
+    'llc': 'LLC (유한책임회사)',
+    'corp': 'Corporation (주식회사)',
+  };
+
+  return valueMap[value] || value;
+};
 
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadSurvey();
@@ -26,6 +63,13 @@ export default function SurveyDetail() {
       const data = await fetchSurvey(id);
       setSurvey(data);
       setAdminNotes(data.adminNotes || '');
+
+      // 모든 섹션 기본 펼침
+      const sections = new Set<string>();
+      data.answers?.forEach(answer => {
+        sections.add(getQuestionSection(answer.questionId));
+      });
+      setExpandedSections(sections);
     } catch (err) {
       setError(err instanceof Error ? err.message : '설문을 불러오는데 실패했습니다.');
     } finally {
@@ -36,34 +80,19 @@ export default function SurveyDetail() {
   const handleStatusUpdate = async (status: 'approved' | 'rejected') => {
     if (!id) return;
 
+    const statusText = status === 'approved' ? '승인' : '거절';
+    if (!confirm(`이 설문을 ${statusText}하시겠습니까?`)) return;
+
     setIsUpdating(true);
-    setMessage({ type: '', text: '' });
 
     try {
       await updateSurvey(id, { status, adminNotes });
-      setMessage({ type: 'success', text: `설문이 ${status === 'approved' ? '승인' : '반려'}되었습니다.` });
-      loadSurvey();
+      alert(`설문이 ${statusText}되었습니다.`);
+      navigate('/admin/dashboard');
     } catch (err) {
-      setMessage({ type: 'error', text: '상태 업데이트에 실패했습니다.' });
+      alert('상태 업데이트에 실패했습니다.');
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleGeneratePDF = async () => {
-    if (!id) return;
-
-    setIsGeneratingPDF(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      await generatePDF(id);
-      setMessage({ type: 'success', text: 'PDF 문서가 생성되었습니다.' });
-      loadSurvey();
-    } catch (err) {
-      setMessage({ type: 'error', text: 'PDF 생성에 실패했습니다.' });
-    } finally {
-      setIsGeneratingPDF(false);
     }
   };
 
@@ -82,14 +111,43 @@ export default function SurveyDetail() {
     return '$' + amount.toLocaleString();
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { class: string; text: string }> = {
-      pending: { class: 'status-pending', text: '검토 대기' },
-      approved: { class: 'status-approved', text: '승인됨' },
-      rejected: { class: 'status-rejected', text: '반려됨' },
+  const getStatusInfo = (status: string) => {
+    const statusMap: Record<string, { class: string; text: string; icon: string }> = {
+      pending: { class: 'status-pending', text: '대기중', icon: '⏳' },
+      approved: { class: 'status-approved', text: '승인됨', icon: '✓' },
+      rejected: { class: 'status-rejected', text: '거절됨', icon: '✗' },
     };
-    const { class: className, text } = statusMap[status] || statusMap.pending;
-    return <span className={`status-badge ${className}`}>{text}</span>;
+    return statusMap[status] || statusMap.pending;
+  };
+
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section);
+    } else {
+      newExpanded.add(section);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  // 답변을 섹션별로 그룹화
+  const groupAnswersBySection = () => {
+    const grouped: Record<string, Array<{ questionId: string; value: string | string[]; questionText: string; index: number }>> = {};
+    let index = 1;
+
+    survey?.answers?.forEach(answer => {
+      const section = getQuestionSection(answer.questionId);
+      if (!grouped[section]) {
+        grouped[section] = [];
+      }
+      grouped[section].push({
+        ...answer,
+        questionText: getQuestionText(answer.questionId),
+        index: index++,
+      });
+    });
+
+    return grouped;
   };
 
   if (loading) {
@@ -98,143 +156,143 @@ export default function SurveyDetail() {
 
   if (error || !survey) {
     return (
-      <div className="card">
-        <div className="message message-error">{error || '설문을 찾을 수 없습니다.'}</div>
-        <Link to="/admin" className="btn btn-secondary">목록으로</Link>
+      <div className="detail-error">
+        <div className="error-icon">⚠️</div>
+        <h3>{error || '설문을 찾을 수 없습니다.'}</h3>
+        <button onClick={() => navigate('/admin/dashboard')} className="btn btn-primary">
+          대시보드로 돌아가기
+        </button>
       </div>
     );
   }
 
+  const statusInfo = getStatusInfo(survey.status);
+  const groupedAnswers = groupAnswersBySection();
+
   return (
-    <div>
-      <div style={{ marginBottom: '20px' }}>
-        <Link to="/admin" className="btn btn-outline">
-          &larr; 목록으로
-        </Link>
+    <div className="survey-detail">
+      {/* 헤더 */}
+      <div className="detail-header">
+        <button onClick={() => navigate('/admin/dashboard')} className="btn-back">
+          ← 목록으로
+        </button>
+        <div className={`status-badge-large ${statusInfo.class}`}>
+          <span className="status-icon">{statusInfo.icon}</span>
+          {statusInfo.text}
+        </div>
       </div>
 
-      {message.text && (
-        <div className={`message message-${message.type}`}>{message.text}</div>
-      )}
-
-      <div className="card">
-        <h2>설문 상세 정보</h2>
-
-        {/* Customer Info */}
-        <div className="detail-section">
-          <h3>고객 정보</h3>
-          <div className="detail-row">
-            <span className="detail-label">이름</span>
-            <span className="detail-value">{survey.customerInfo?.name || '-'}</span>
-          </div>
-          <div className="detail-row">
-            <span className="detail-label">이메일</span>
-            <span className="detail-value">{survey.customerInfo?.email || '-'}</span>
-          </div>
-          {survey.customerInfo?.phone && (
-            <div className="detail-row">
-              <span className="detail-label">연락처</span>
-              <span className="detail-value">{survey.customerInfo.phone}</span>
-            </div>
-          )}
-          {survey.customerInfo?.company && (
-            <div className="detail-row">
-              <span className="detail-label">회사명</span>
-              <span className="detail-value">{survey.customerInfo.company}</span>
-            </div>
-          )}
+      {/* 고객 정보 카드 */}
+      <div className="info-card">
+        <div className="info-card-header">
+          <h3>📋 고객 정보</h3>
         </div>
-
-        {/* Status Info */}
-        <div className="detail-section">
-          <h3>상태 정보</h3>
-          <div className="detail-row">
-            <span className="detail-label">상태</span>
-            <span className="detail-value">{getStatusBadge(survey.status)}</span>
+        <div className="info-grid">
+          <div className="info-item">
+            <span className="info-label">고객명</span>
+            <span className="info-value">{survey.customerInfo?.name || '-'}</span>
           </div>
-          <div className="detail-row">
-            <span className="detail-label">예상 금액</span>
-            <span className="detail-value" style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
-              {formatPrice(survey.totalPrice || 0)}
-            </span>
+          <div className="info-item">
+            <span className="info-label">이메일</span>
+            <span className="info-value">{survey.customerInfo?.email || '-'}</span>
           </div>
-          <div className="detail-row">
-            <span className="detail-label">제출일</span>
-            <span className="detail-value">{formatDate(survey.createdAt)}</span>
+          <div className="info-item">
+            <span className="info-label">연락처</span>
+            <span className="info-value">{survey.customerInfo?.phone || '-'}</span>
           </div>
-          <div className="detail-row">
-            <span className="detail-label">검토일</span>
-            <span className="detail-value">{formatDate(survey.reviewedAt)}</span>
+          <div className="info-item">
+            <span className="info-label">회사명</span>
+            <span className="info-value">{survey.customerInfo?.company || '-'}</span>
           </div>
-          <div className="detail-row">
-            <span className="detail-label">문서 생성일</span>
-            <span className="detail-value">{formatDate(survey.documentGeneratedAt)}</span>
+          <div className="info-item">
+            <span className="info-label">제출일시</span>
+            <span className="info-value">{formatDate(survey.createdAt)}</span>
+          </div>
+          <div className="info-item highlight">
+            <span className="info-label">예상 금액</span>
+            <span className="info-value price">{formatPrice(survey.totalPrice || 0)}</span>
           </div>
         </div>
+      </div>
 
-        {/* Survey Answers */}
-        <div className="detail-section">
-          <h3>설문 응답</h3>
-          {survey.answers?.map((answer, index) => (
-            <div key={index} className="question-card">
-              <h4>{answer.questionId}</h4>
-              <p style={{ marginTop: '10px', color: '#374151' }}>
-                {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
-              </p>
-            </div>
-          ))}
-        </div>
+      {/* 설문 응답 - 아코디언 */}
+      <div className="answers-section">
+        <h3>📝 설문 응답</h3>
 
-        {/* Admin Actions */}
-        <div className="detail-section">
-          <h3>관리자 액션</h3>
-
-          <div className="form-group">
-            <label>관리자 메모</label>
-            <textarea
-              value={adminNotes}
-              onChange={e => setAdminNotes(e.target.value)}
-              placeholder="메모를 입력하세요..."
-              rows={3}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        {Object.entries(groupedAnswers).map(([section, answers]) => (
+          <div key={section} className="answer-accordion">
             <button
-              className="btn btn-success"
-              onClick={() => handleStatusUpdate('approved')}
-              disabled={isUpdating || survey.status === 'approved'}
+              className={`accordion-header ${expandedSections.has(section) ? 'expanded' : ''}`}
+              onClick={() => toggleSection(section)}
             >
-              {isUpdating ? '처리 중...' : '승인하기'}
+              <span className="accordion-title">{section}</span>
+              <span className="accordion-count">{answers.length}개 항목</span>
+              <span className="accordion-icon">{expandedSections.has(section) ? '▼' : '▶'}</span>
             </button>
 
-            <button
-              className="btn btn-danger"
-              onClick={() => handleStatusUpdate('rejected')}
-              disabled={isUpdating || survey.status === 'rejected'}
-            >
-              {isUpdating ? '처리 중...' : '반려하기'}
-            </button>
-
-            <button
-              className="btn btn-primary"
-              onClick={handleGeneratePDF}
-              disabled={isGeneratingPDF || survey.status !== 'approved'}
-              title={survey.status !== 'approved' ? '승인된 설문만 문서 생성이 가능합니다' : ''}
-            >
-              {isGeneratingPDF ? 'PDF 생성 중...' : 'PDF 문서 생성'}
-            </button>
-
-            {survey.documentGeneratedAt && (
-              <a
-                href={getDownloadURL(survey.id)}
-                className="btn btn-secondary"
-                download
-              >
-                PDF 다운로드
-              </a>
+            {expandedSections.has(section) && (
+              <div className="accordion-content">
+                {answers.map((answer) => (
+                  <div key={answer.questionId} className="answer-card">
+                    <div className="answer-number">Q{answer.index}</div>
+                    <div className="answer-body">
+                      <div className="answer-question">{answer.questionText}</div>
+                      <div className="answer-value">{formatAnswerValue(answer.value)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
+        ))}
+      </div>
+
+      {/* 관리자 메모 */}
+      <div className="admin-notes-section">
+        <h3>💬 관리자 메모</h3>
+        <textarea
+          value={adminNotes}
+          onChange={e => setAdminNotes(e.target.value)}
+          placeholder="메모를 입력하세요..."
+          rows={3}
+          className="admin-notes-input"
+        />
+      </div>
+
+      {/* 액션 버튼 */}
+      <div className="action-bar">
+        <button
+          onClick={() => navigate('/admin/dashboard')}
+          className="btn btn-secondary btn-lg"
+        >
+          ← 뒤로가기
+        </button>
+
+        <div className="action-buttons-right">
+          {survey.status === 'pending' && (
+            <>
+              <button
+                className="btn btn-danger btn-lg"
+                onClick={() => handleStatusUpdate('rejected')}
+                disabled={isUpdating}
+              >
+                {isUpdating ? '처리 중...' : '✗ 거절'}
+              </button>
+              <button
+                className="btn btn-success btn-lg"
+                onClick={() => handleStatusUpdate('approved')}
+                disabled={isUpdating}
+              >
+                {isUpdating ? '처리 중...' : '✓ 승인'}
+              </button>
+            </>
+          )}
+
+          {survey.status !== 'pending' && (
+            <div className="status-message">
+              이미 {statusInfo.text} 상태입니다
+            </div>
+          )}
         </div>
       </div>
     </div>
