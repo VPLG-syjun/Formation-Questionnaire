@@ -1,18 +1,18 @@
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import SurveyForm from './pages/SurveyForm';
 import AdminDashboard from './pages/AdminDashboard';
 import SurveyDetail from './pages/SurveyDetail';
 import SubmitSuccess from './pages/SubmitSuccess';
 import AdminLogin from './pages/AdminLogin';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminLayout from './components/AdminLayout';
 
 function Navigation() {
   const location = useLocation();
-  const { isAuthenticated, logout } = useAuth();
 
-  // 로그인 페이지에서는 헤더 숨김
-  if (location.pathname === '/admin/login') {
+  // 관리자 영역에서는 Navigation 숨김 (AdminLayout 사용)
+  if (location.pathname.startsWith('/admin')) {
     return null;
   }
 
@@ -25,14 +25,9 @@ function Navigation() {
           <Link to="/" className={location.pathname === '/' ? 'active' : ''}>
             설문 작성
           </Link>
-          <Link to="/admin" className={location.pathname.startsWith('/admin') ? 'active' : ''}>
-            관리자 대시보드
+          <Link to="/admin/dashboard" className="admin-link">
+            관리자
           </Link>
-          {isAuthenticated && (
-            <button onClick={logout} className="logout-button">
-              로그아웃
-            </button>
-          )}
         </nav>
       </div>
     </header>
@@ -44,29 +39,30 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Navigation />
-        <main className="container">
-          <Routes>
-            <Route path="/" element={<SurveyForm />} />
-            <Route path="/success" element={<SubmitSuccess />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/survey/:id"
-              element={
-                <ProtectedRoute>
-                  <SurveyDetail />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </main>
+        <Routes>
+          {/* 공개 페이지 */}
+          <Route path="/" element={<main className="container"><SurveyForm /></main>} />
+          <Route path="/success" element={<main className="container"><SubmitSuccess /></main>} />
+
+          {/* 관리자 로그인 */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* 관리자 영역 (AdminLayout 사용) */}
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="survey/:id" element={<SurveyDetail />} />
+            <Route path="stats" element={<div className="coming-soon">통계 페이지 (준비 중)</div>} />
+            <Route path="settings" element={<div className="coming-soon">설정 페이지 (준비 중)</div>} />
+          </Route>
+        </Routes>
       </AuthProvider>
     </BrowserRouter>
   );

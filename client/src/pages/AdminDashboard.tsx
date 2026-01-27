@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Survey, SurveyStats } from '../types/survey';
-import { fetchSurveys, fetchStats, deleteSurvey } from '../services/api';
+import { fetchSurveys, fetchStats, deleteSurvey, updateSurvey } from '../services/api';
 
 export default function AdminDashboard() {
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -30,14 +31,32 @@ export default function AdminDashboard() {
     loadData();
   }, [filter]);
 
+  const handleStatusChange = async (id: string, status: 'approved' | 'rejected') => {
+    const statusText = status === 'approved' ? '승인' : '거절';
+    if (!confirm(`이 설문을 ${statusText}하시겠습니까?`)) return;
+
+    try {
+      setActionLoading(id);
+      await updateSurvey(id, { status });
+      loadData();
+    } catch (err) {
+      alert(`${statusText}에 실패했습니다.`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
 
     try {
+      setActionLoading(id);
       await deleteSurvey(id);
       loadData();
     } catch (err) {
       alert('삭제에 실패했습니다.');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -57,9 +76,9 @@ export default function AdminDashboard() {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { class: string; text: string }> = {
-      pending: { class: 'status-pending', text: '검토 대기' },
+      pending: { class: 'status-pending', text: '대기중' },
       approved: { class: 'status-approved', text: '승인됨' },
-      rejected: { class: 'status-rejected', text: '반려됨' },
+      rejected: { class: 'status-rejected', text: '거절됨' },
     };
     const { class: className, text } = statusMap[status] || statusMap.pending;
     return <span className={`status-badge ${className}`}>{text}</span>;
@@ -74,10 +93,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div>
-      <h2 style={{ marginBottom: '25px', color: 'var(--color-primary)', fontWeight: 700 }}>
-        관리자 대시보드
-      </h2>
+    <div className="dashboard-content">
+      <h2 className="page-title">설문 관리</h2>
 
       {/* Stats */}
       {stats && (
@@ -86,19 +103,17 @@ export default function AdminDashboard() {
             <div className="stat-label">전체 설문</div>
             <div className="stat-value">{stats.total}</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-label">검토 대기</div>
-            <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{stats.pending}</div>
+          <div className="stat-card warning">
+            <div className="stat-label">대기중</div>
+            <div className="stat-value">{stats.pending}</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card success">
             <div className="stat-label">승인됨</div>
-            <div className="stat-value" style={{ color: 'var(--color-success)' }}>{stats.approved}</div>
+            <div className="stat-value">{stats.approved}</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-label">총 매출</div>
-            <div className="stat-value" style={{ color: 'var(--color-primary)', fontSize: '1.5rem' }}>
-              {formatPrice(stats.totalRevenue || 0)}
-            </div>
+          <div className="stat-card danger">
+            <div className="stat-label">거절됨</div>
+            <div className="stat-value">{stats.rejected}</div>
           </div>
         </div>
       )}
@@ -116,7 +131,7 @@ export default function AdminDashboard() {
             className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
             onClick={() => setFilter('pending')}
           >
-            검토 대기
+            대기중
           </button>
           <button
             className={`filter-tab ${filter === 'approved' ? 'active' : ''}`}
@@ -128,7 +143,7 @@ export default function AdminDashboard() {
             className={`filter-tab ${filter === 'rejected' ? 'active' : ''}`}
             onClick={() => setFilter('rejected')}
           >
-            반려됨
+            거절됨
           </button>
         </div>
 
@@ -136,45 +151,66 @@ export default function AdminDashboard() {
         {surveys.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">📋</div>
-            <h3 style={{ marginBottom: '8px', color: 'var(--color-gray-700)' }}>설문이 없습니다</h3>
+            <h3>설문이 없습니다</h3>
             <p>아직 제출된 설문이 없습니다.</p>
           </div>
         ) : (
           <div className="table-container">
-            <table>
+            <table className="data-table">
               <thead>
                 <tr>
+                  <th>제출일시</th>
                   <th>고객명</th>
                   <th>이메일</th>
                   <th>회사명</th>
                   <th>예상 금액</th>
                   <th>상태</th>
-                  <th>제출일</th>
                   <th>액션</th>
                 </tr>
               </thead>
               <tbody>
                 {surveys.map(survey => (
                   <tr key={survey.id}>
-                    <td style={{ fontWeight: 500 }}>{survey.customerInfo?.name || '-'}</td>
-                    <td>{survey.customerInfo?.email || '-'}</td>
+                    <td className="date-cell">
+                      {formatDate(survey.createdAt)}
+                    </td>
+                    <td className="name-cell">{survey.customerInfo?.name || '-'}</td>
+                    <td className="email-cell">{survey.customerInfo?.email || '-'}</td>
                     <td>{survey.customerInfo?.company || '-'}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
+                    <td className="price-cell">
                       {formatPrice(survey.totalPrice || 0)}
                     </td>
                     <td>{getStatusBadge(survey.status)}</td>
-                    <td style={{ color: 'var(--color-gray-500)', fontSize: '0.9rem' }}>
-                      {formatDate(survey.createdAt)}
-                    </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <Link to={`/admin/survey/${survey.id}`} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }}>
-                          상세보기
+                      <div className="action-buttons">
+                        <Link
+                          to={`/admin/survey/${survey.id}`}
+                          className="btn btn-sm btn-primary"
+                        >
+                          보기
                         </Link>
+                        {survey.status === 'pending' && (
+                          <>
+                            <button
+                              className="btn btn-sm btn-success"
+                              onClick={() => handleStatusChange(survey.id, 'approved')}
+                              disabled={actionLoading === survey.id}
+                            >
+                              {actionLoading === survey.id ? '...' : '승인'}
+                            </button>
+                            <button
+                              className="btn btn-sm btn-warning"
+                              onClick={() => handleStatusChange(survey.id, 'rejected')}
+                              disabled={actionLoading === survey.id}
+                            >
+                              {actionLoading === survey.id ? '...' : '거절'}
+                            </button>
+                          </>
+                        )}
                         <button
-                          className="btn btn-danger"
-                          style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                          className="btn btn-sm btn-danger"
                           onClick={() => handleDelete(survey.id)}
+                          disabled={actionLoading === survey.id}
                         >
                           삭제
                         </button>
