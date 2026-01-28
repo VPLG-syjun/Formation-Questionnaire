@@ -3,6 +3,8 @@ import SurveyForm from './pages/SurveyForm';
 import AdminDashboard from './pages/AdminDashboard';
 import SurveyDetail from './pages/SurveyDetail';
 import SubmitSuccess from './pages/SubmitSuccess';
+import AdminLogin from './pages/AdminLogin';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function Navigation() {
   const location = useLocation();
@@ -33,8 +35,9 @@ function App() {
         <Routes>
           <Route path="/" element={<SurveyForm />} />
           <Route path="/success" element={<SubmitSuccess />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/survey/:id" element={<SurveyDetail />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/survey/:id" element={<ProtectedRoute><SurveyDetail /></ProtectedRoute>} />
         </Routes>
       </main>
     </BrowserRouter>
