@@ -15,9 +15,13 @@
     "install:all": "npm install && cd server && npm install && cd ../client && npm install"
   },
   "devDependencies": {
+    "@vercel/node": "^5.5.28",
     "concurrently": "^8.2.2"
   },
   "engines": {
     "node": "20.x"
+  },
+  "dependencies": {
+    "redis": "^5.10.0"
   }
 }
