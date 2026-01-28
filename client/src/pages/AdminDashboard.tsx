@@ -155,7 +155,6 @@ export default function AdminDashboard() {
             <table>
               <thead>
                 <tr>
-                  <th>고객명</th>
                   <th>이메일</th>
                   <th>회사명</th>
                   <th>예상 금액</th>
@@ -167,8 +166,7 @@ export default function AdminDashboard() {
               <tbody>
                 {surveys.map(survey => (
                   <tr key={survey.id}>
-                    <td style={{ fontWeight: 500 }}>{survey.customerInfo?.name || '-'}</td>
-                    <td>{survey.customerInfo?.email || '-'}</td>
+                    <td style={{ fontWeight: 500 }}>{survey.customerInfo?.email || '-'}</td>
                     <td>{survey.customerInfo?.company || '-'}</td>
                     <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
                       {formatPrice(survey.totalPrice || 0)}
