@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Survey, SurveyStats } from '../types/survey';
 import { fetchSurveys, fetchStats, deleteSurvey } from '../services/api';
 
@@ -9,6 +9,12 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('adminAuth');
+    navigate('/admin/login');
+  };
 
   const loadData = async () => {
     try {
@@ -75,9 +81,14 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: '25px', color: 'var(--color-primary)', fontWeight: 700 }}>
-        관리자 대시보드
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+        <h2 style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
+          관리자 대시보드
+        </h2>
+        <button onClick={handleLogout} className="btn btn-outline">
+          로그아웃
+        </button>
+      </div>
 
       {/* Stats */}
       {stats && (
