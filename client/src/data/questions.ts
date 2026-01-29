@@ -420,18 +420,30 @@ export const questionSections: QuestionSection[] = [
         },
         documentField: 'FounderCount',
       },
+      // Founder 1
+      {
+        id: 'founder1Type',
+        type: 'dropdown',
+        text: '창업자 1 유형을 선택해주세요.',
+        required: true,
+        options: [
+          { value: 'individual', label: '개인' },
+          { value: 'corporation', label: '법인' },
+        ],
+        documentField: 'Founder1Type',
+      },
       {
         id: 'founder1Name',
         type: 'text',
-        text: '창업자 성명 (영문)',
-        placeholder: 'Hong Gil Dong',
+        text: '창업자 1 성명/법인명 (영문)',
+        placeholder: 'Hong Gil Dong / ABC Corp.',
         required: true,
         documentField: 'Founder1Name',
       },
       {
         id: 'founder1Address',
         type: 'text',
-        text: '창업자 주소(영문)',
+        text: '창업자 1 주소(영문)',
         description: '중복되는 경우 기재하지 않으셔도 됩니다.',
         required: false,
         documentField: 'Founder1Address',
@@ -439,24 +451,52 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'founder1Email',
         type: 'email',
-        text: '창업자 이메일 주소',
+        text: '창업자 1 이메일 주소',
         description: '중복되는 경우 기재하지 않으셔도 됩니다.',
         placeholder: 'example@email.com',
         required: false,
         documentField: 'Founder1Email',
       },
       {
+        id: 'founder1CeoName',
+        type: 'text',
+        text: '창업자 1 법인 대표이사 성명 (영문)',
+        placeholder: 'Hong Gil Dong',
+        required: true,
+        conditionalOn: {
+          questionId: 'founder1Type',
+          values: ['corporation'],
+        },
+        documentField: 'Founder1CeoName',
+      },
+      {
         id: 'founder1Cash',
         type: 'text',
-        text: '창업자가 출자할 창업 자금 금액($)을 기재해주세요.',
+        text: '창업자 1이 출자할 창업 자금 금액($)을 기재해주세요.',
         required: true,
         documentField: 'Founder1Cash',
+      },
+      // Founder 2
+      {
+        id: 'founder2Type',
+        type: 'dropdown',
+        text: '창업자 2 유형을 선택해주세요.',
+        required: true,
+        options: [
+          { value: 'individual', label: '개인' },
+          { value: 'corporation', label: '법인' },
+        ],
+        conditionalOn: {
+          questionId: 'founderCount',
+          values: ['2', '3', '4'],
+        },
+        documentField: 'Founder2Type',
       },
       {
         id: 'founder2Name',
         type: 'text',
-        text: '창업자 2 성명 (영문)',
-        placeholder: 'Kim Chul Soo',
+        text: '창업자 2 성명/법인명 (영문)',
+        placeholder: 'Kim Chul Soo / XYZ Corp.',
         required: true,
         conditionalOn: {
           questionId: 'founderCount',
@@ -490,6 +530,18 @@ export const questionSections: QuestionSection[] = [
         documentField: 'Founder2Email',
       },
       {
+        id: 'founder2CeoName',
+        type: 'text',
+        text: '창업자 2 법인 대표이사 성명 (영문)',
+        placeholder: 'Kim Chul Soo',
+        required: true,
+        conditionalOn: {
+          questionId: 'founder2Type',
+          values: ['corporation'],
+        },
+        documentField: 'Founder2CeoName',
+      },
+      {
         id: 'founder2Cash',
         type: 'text',
         text: '창업자 2가 출자할 창업 자금 금액($)을 기재해주세요.',
@@ -500,11 +552,27 @@ export const questionSections: QuestionSection[] = [
         },
         documentField: 'Founder2Cash',
       },
+      // Founder 3
+      {
+        id: 'founder3Type',
+        type: 'dropdown',
+        text: '창업자 3 유형을 선택해주세요.',
+        required: true,
+        options: [
+          { value: 'individual', label: '개인' },
+          { value: 'corporation', label: '법인' },
+        ],
+        conditionalOn: {
+          questionId: 'founderCount',
+          values: ['3', '4'],
+        },
+        documentField: 'Founder3Type',
+      },
       {
         id: 'founder3Name',
         type: 'text',
-        text: '창업자 3 성명 (영문)',
-        placeholder: 'Lee Young Hee',
+        text: '창업자 3 성명/법인명 (영문)',
+        placeholder: 'Lee Young Hee / DEF Corp.',
         required: true,
         conditionalOn: {
           questionId: 'founderCount',
@@ -538,6 +606,18 @@ export const questionSections: QuestionSection[] = [
         documentField: 'Founder3Email',
       },
       {
+        id: 'founder3CeoName',
+        type: 'text',
+        text: '창업자 3 법인 대표이사 성명 (영문)',
+        placeholder: 'Lee Young Hee',
+        required: true,
+        conditionalOn: {
+          questionId: 'founder3Type',
+          values: ['corporation'],
+        },
+        documentField: 'Founder3CeoName',
+      },
+      {
         id: 'founder3Cash',
         type: 'text',
         text: '창업자 3이 출자할 창업 자금 금액($)을 기재해주세요.',
@@ -548,11 +628,27 @@ export const questionSections: QuestionSection[] = [
         },
         documentField: 'Founder3Cash',
       },
+      // Founder 4
+      {
+        id: 'founder4Type',
+        type: 'dropdown',
+        text: '창업자 4 유형을 선택해주세요.',
+        required: true,
+        options: [
+          { value: 'individual', label: '개인' },
+          { value: 'corporation', label: '법인' },
+        ],
+        conditionalOn: {
+          questionId: 'founderCount',
+          values: ['4'],
+        },
+        documentField: 'Founder4Type',
+      },
       {
         id: 'founder4Name',
         type: 'text',
-        text: '창업자 4 성명 (영문)',
-        placeholder: 'Park So Hyun',
+        text: '창업자 4 성명/법인명 (영문)',
+        placeholder: 'Park So Hyun / GHI Corp.',
         required: true,
         conditionalOn: {
           questionId: 'founderCount',
@@ -584,6 +680,18 @@ export const questionSections: QuestionSection[] = [
           values: ['4'],
         },
         documentField: 'Founder4Email',
+      },
+      {
+        id: 'founder4CeoName',
+        type: 'text',
+        text: '창업자 4 법인 대표이사 성명 (영문)',
+        placeholder: 'Park So Hyun',
+        required: true,
+        conditionalOn: {
+          questionId: 'founder4Type',
+          values: ['corporation'],
+        },
+        documentField: 'Founder4CeoName',
       },
       {
         id: 'founder4Cash',
