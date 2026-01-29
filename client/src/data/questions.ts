@@ -15,6 +15,9 @@ export const questionSections: QuestionSection[] = [
         description: '이 질문지는 FirstRegister가 스타트업 회사 설립을 대행하기 위해 필요한 여러 서류들을 준비하는 과정에 필수적인 정보들을 제공받을 수 있도록 구성되어 있습니다.\n\n포함된 질문들은 창립 당시 최소한의 자산 및 운용 요건으로 전형적인 법적 스타트업을 설립하기 위한 내용으로 정해져 있으며, 만약 스타트업과 관련해 질문에 해당하는 내용이 없거나 답변하기 어려울 경우 "N/A"로 응답하여 주시거나 필수 질문이 아닐 경우 공란으로 두셔도 괜찮습니다.\n\nFirstRegister는 여기 기재하시는 Email 주소를 이용해 질문지 내용에 대한 확인을 드리고, Invoice를 발행할 예정입니다. 반드시 정확한 주 Email 주소를 기입하여 주시기 바랍니다.',
         placeholder: 'example@email.com',
         required: true,
+        validation: {
+          pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+        },
         documentField: 'customerEmail',
       },
       {
@@ -29,6 +32,22 @@ export const questionSections: QuestionSection[] = [
         ],
         documentField: 'agreeTerms',
       },
+      {
+        id: 'proceedWithCorp',
+        type: 'yesno',
+        text: '본 설문은 일반적인 미국 법인(Corporation)을 설립하기 위한 질문들로 구성되어 있습니다. 계속 진행하시겠습니까?',
+        description: '기본 서비스 비용은 $1,900입니다.',
+        required: true,
+        conditionalOn: {
+          questionId: 'agreeTerms',
+          values: ['1'],
+        },
+        priceEffect: {
+          type: 'perAnswer',
+          values: { yes: 1900, no: 0 },
+        },
+        documentField: 'proceedWithCorp',
+      },
     ],
   },
   {
@@ -37,30 +56,15 @@ export const questionSections: QuestionSection[] = [
     description: '',
     questions: [
       {
-        id: 'companyType',
-        type: 'dropdown',
-        text: '설립 형태를 선택해주세요',
-        required: true,
-        options: [
-          { value: 'lic', label: 'LLC (유한책임회사)', price: 1900 },
-          { value: 'corp', label: 'Corporation (주식회사)', price: 1900 },
-        ],
-        priceEffect: {
-          type: 'perAnswer',
-          values: { lic: 1900, corp: 1900 },
-        },
-        conditionalOn: {
-          questionId: 'agreeTerms',
-          values: ['1'],
-        },
-        documentField: 'companyType',
-      },
-      {
         id: 'companyName1',
         type: 'text',
         text: '희망하는 회사명 (1순위)',
         description: '설립할 회사명을 입력해주세요.',
         required: true,
+        conditionalOn: {
+          questionId: 'proceedWithCorp',
+          values: ['yes'],
+        },
         documentField: 'companyName1',
       },
       {
@@ -68,6 +72,10 @@ export const questionSections: QuestionSection[] = [
         type: 'text',
         text: '희망하는 회사명 (2순위)',
         required: false,
+        conditionalOn: {
+          questionId: 'proceedWithCorp',
+          values: ['yes'],
+        },
         documentField: 'companyName2',
       },
       {
@@ -75,6 +83,10 @@ export const questionSections: QuestionSection[] = [
         type: 'text',
         text: '희망하는 회사명 (3순위)',
         required: false,
+        conditionalOn: {
+          questionId: 'proceedWithCorp',
+          values: ['yes'],
+        },
         documentField: 'companyName3',
       },
       {
@@ -82,6 +94,10 @@ export const questionSections: QuestionSection[] = [
         type: 'text',
         text: '회사에서 제공하는 상품 또는 서비스에 대해 설명해주세요.',
         required: false,
+        conditionalOn: {
+          questionId: 'proceedWithCorp',
+          values: ['yes'],
+        },
         documentField: 'info',
       },
     ],

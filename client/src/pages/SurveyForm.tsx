@@ -71,13 +71,44 @@ export default function SurveyForm() {
     const newErrors: Record<string, string> = {};
 
     visibleQuestions.forEach(question => {
+      const answer = answers[question.id];
+
       if (question.required) {
-        const answer = answers[question.id];
         if (!answer || (Array.isArray(answer) && answer.length === 0)) {
           newErrors[question.id] = '필수 항목입니다.';
+          return;
+        }
+      }
+
+      // 이메일 형식 검증
+      if (question.type === 'email' && answer) {
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailPattern.test(answer as string)) {
+          newErrors[question.id] = '올바른 이메일 형식을 입력해주세요.';
+        }
+      }
+
+      // validation 패턴 검증
+      if (question.validation?.pattern && answer) {
+        const pattern = new RegExp(question.validation.pattern);
+        if (!pattern.test(answer as string)) {
+          newErrors[question.id] = '올바른 형식을 입력해주세요.';
         }
       }
     });
+
+    // 기본 정보 섹션에서 추가 검증
+    if (currentSection.id === 'basic') {
+      // terms가 Accept가 아니면 다음으로 넘어갈 수 없음
+      if (answers.agreeTerms && answers.agreeTerms !== '1') {
+        newErrors['agreeTerms'] = '서비스 이용에 동의해야 진행할 수 있습니다.';
+      }
+
+      // proceedWithCorp가 yes가 아니면 다음으로 넘어갈 수 없음
+      if (answers.agreeTerms === '1' && answers.proceedWithCorp && answers.proceedWithCorp !== 'yes') {
+        newErrors['proceedWithCorp'] = '계속 진행하시려면 "예"를 선택해주세요.';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
