@@ -13,12 +13,24 @@ interface Template {
 
 const CATEGORIES = ['투자', '법인설립', '근로계약', '기타'];
 
+interface ScanResult {
+  templateId: string;
+  templateName: string;
+  variables: string[];
+  count: number;
+}
+
 export default function TemplateManagement() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  // 변수 스캔 상태
+  const [scanning, setScanning] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -178,6 +190,35 @@ export default function TemplateManagement() {
     window.open(`/api/templates/download/${id}`, '_blank');
   };
 
+  const handleScanVariables = async (template: Template) => {
+    setScanning(template.id);
+    try {
+      const response = await fetch('/api/admin/templates/scan-variables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || '변수 스캔에 실패했습니다.');
+      }
+
+      const data = await response.json();
+      setScanResult({
+        templateId: template.id,
+        templateName: template.displayName,
+        variables: data.variables,
+        count: data.count,
+      });
+      setShowScanModal(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '변수 스캔에 실패했습니다.');
+    } finally {
+      setScanning(null);
+    }
+  };
+
   const resetForm = () => {
     setFormData({ name: '', displayName: '', category: '법인설립' });
     setSelectedFile(null);
@@ -255,7 +296,15 @@ export default function TemplateManagement() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                          onClick={() => handleScanVariables(template)}
+                          disabled={scanning === template.id}
+                        >
+                          {scanning === template.id ? '스캔 중...' : '변수 스캔'}
+                        </button>
                         <button
                           className="btn btn-outline"
                           style={{ padding: '6px 12px', fontSize: '0.85rem' }}
@@ -369,6 +418,53 @@ export default function TemplateManagement() {
                 disabled={uploading || !selectedFile || !formData.name || !formData.displayName}
               >
                 {uploading ? '업로드 중...' : '업로드'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 변수 스캔 결과 모달 */}
+      {showScanModal && scanResult && (
+        <div className="modal-overlay" onClick={() => setShowScanModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <h3>변수 스캔 결과</h3>
+              <button className="modal-close" onClick={() => setShowScanModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{ marginBottom: '16px' }}>
+                <strong>템플릿:</strong> {scanResult.templateName}
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <strong>발견된 변수:</strong> {scanResult.count}개
+              </div>
+
+              {scanResult.variables.length > 0 ? (
+                <div className="variable-list">
+                  {scanResult.variables.map((variable, index) => (
+                    <div key={index} className="variable-item">
+                      <code>{`{${variable}}`}</code>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state" style={{ padding: '20px' }}>
+                  <p>발견된 변수가 없습니다.</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-gray-500)' }}>
+                    템플릿에서 {'{변수명}'} 형식의 변수를 찾지 못했습니다.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowScanModal(false)}
+              >
+                확인
               </button>
             </div>
           </div>
