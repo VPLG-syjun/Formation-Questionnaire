@@ -766,6 +766,30 @@ tr:last-child td {
   margin-bottom: var(--spacing-sm);
 }
 
+.form-group small {
+  display: block;
+  margin-top: var(--spacing-xs);
+  color: var(--color-gray-500);
+  font-size: 0.85rem;
+}
+
+/* Form Row */
+.form-row {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
 /* Loading */
 .loading {
   display: flex;

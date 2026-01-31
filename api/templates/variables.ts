@@ -25,9 +25,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     client = await getRedisClient();
 
     if (req.method === 'POST') {
-      // 템플릿 변수 생성
+      const { templateId, variables } = req.body;
+
+      // 일괄 저장 모드 (variables 배열이 있는 경우)
+      if (templateId && Array.isArray(variables)) {
+        // 템플릿 존재 확인
+        const templateExists = await client.hExists(TEMPLATES_KEY, templateId);
+        if (!templateExists) {
+          return res.status(404).json({ error: '템플릿을 찾을 수 없습니다.' });
+        }
+
+        // 기존 변수 삭제
+        const allVariables = await client.hGetAll(TEMPLATE_VARIABLES_KEY);
+        for (const [varId, varData] of Object.entries(allVariables)) {
+          const variable = JSON.parse(varData);
+          if (variable.templateId === templateId) {
+            await client.hDel(TEMPLATE_VARIABLES_KEY, varId);
+          }
+        }
+
+        // 새 변수 저장
+        const savedVariables = [];
+        for (const v of variables) {
+          const id = v.id || uuidv4();
+          const variable = {
+            id,
+            templateId,
+            variableName: v.variableName,
+            questionId: v.questionId || '__manual__',
+            dataType: v.dataType || 'text',
+            transformRule: v.transformRule || 'none',
+            required: v.required !== undefined ? v.required : true,
+          };
+
+          await client.hSet(TEMPLATE_VARIABLES_KEY, id, JSON.stringify(variable));
+          savedVariables.push(variable);
+        }
+
+        return res.status(200).json({
+          message: `${savedVariables.length}개의 변수가 저장되었습니다.`,
+          variables: savedVariables,
+        });
+      }
+
+      // 단일 변수 생성 모드 (기존 방식)
       const {
-        templateId,
         variableName,
         variableKey,
         questionIds,

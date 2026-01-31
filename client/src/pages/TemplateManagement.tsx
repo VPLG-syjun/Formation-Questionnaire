@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 
 interface Template {
   id: string;
@@ -297,6 +298,13 @@ export default function TemplateManagement() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <Link
+                          to={`/admin/templates/${template.id}/edit`}
+                          className="btn btn-primary"
+                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                        >
+                          편집
+                        </Link>
                         <button
                           className="btn btn-secondary"
                           style={{ padding: '6px 12px', fontSize: '0.85rem' }}
