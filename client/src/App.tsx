@@ -4,6 +4,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SurveyDetail from './pages/SurveyDetail';
 import SubmitSuccess from './pages/SubmitSuccess';
 import AdminLogin from './pages/AdminLogin';
+import TemplateManagement from './pages/TemplateManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function Navigation() {
@@ -38,6 +39,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/survey/:id" element={<ProtectedRoute><SurveyDetail /></ProtectedRoute>} />
+          <Route path="/admin/templates" element={<ProtectedRoute><TemplateManagement /></ProtectedRoute>} />
         </Routes>
       </main>
     </BrowserRouter>

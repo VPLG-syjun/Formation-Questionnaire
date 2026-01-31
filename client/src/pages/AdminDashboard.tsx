@@ -85,9 +85,14 @@ export default function AdminDashboard() {
         <h2 style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
           관리자 대시보드
         </h2>
-        <button onClick={handleLogout} className="btn btn-outline">
-          로그아웃
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <Link to="/admin/templates" className="btn btn-secondary">
+            템플릿 관리
+          </Link>
+          <button onClick={handleLogout} className="btn btn-outline">
+            로그아웃
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
