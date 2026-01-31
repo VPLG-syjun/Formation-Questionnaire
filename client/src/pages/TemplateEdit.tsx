@@ -21,7 +21,33 @@ interface VariableMapping {
   required: boolean;
 }
 
+interface RuleCondition {
+  questionId: string;
+  operator: string;
+  value: string;
+}
+
+interface SelectionRule {
+  id?: string;
+  conditions: RuleCondition[];
+  priority: number;
+  isAlwaysInclude: boolean;
+  isManualOnly: boolean;
+}
+
 const CATEGORIES = ['투자', '법인설립', '근로계약', '기타'];
+
+const OPERATORS = [
+  { value: '==', label: '같음 (==)' },
+  { value: '!=', label: '다름 (!=)' },
+  { value: 'contains', label: '포함함' },
+  { value: 'not_contains', label: '포함하지 않음' },
+  { value: 'in', label: '다음 중 하나 (in)' },
+  { value: '>', label: '크다 (>)' },
+  { value: '>=', label: '크거나 같다 (>=)' },
+  { value: '<', label: '작다 (<)' },
+  { value: '<=', label: '작거나 같다 (<=)' },
+];
 
 const DATA_TYPES = [
   { value: 'text', label: '텍스트' },
@@ -86,6 +112,9 @@ export default function TemplateEdit() {
   const [variables, setVariables] = useState<VariableMapping[]>([]);
   const [scanning, setScanning] = useState(false);
 
+  // 선택 규칙
+  const [rules, setRules] = useState<SelectionRule[]>([]);
+
   // 새 변수 추가 모달
   const [showAddModal, setShowAddModal] = useState(false);
   const [newVariable, setNewVariable] = useState({
@@ -122,6 +151,13 @@ export default function TemplateEdit() {
       if (varsRes.ok) {
         const varsData = await varsRes.json();
         setVariables(varsData);
+      }
+
+      // 선택 규칙 조회
+      const rulesRes = await fetch(`/api/templates/rules?templateId=${id}`);
+      if (rulesRes.ok) {
+        const rulesData = await rulesRes.json();
+        setRules(rulesData);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
@@ -213,6 +249,66 @@ export default function TemplateEdit() {
     setVariables(updated);
   };
 
+  // 규칙 관리 함수들
+  const addRule = () => {
+    const newRule: SelectionRule = {
+      conditions: [{ questionId: '', operator: '==', value: '' }],
+      priority: rules.length + 1,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    };
+    setRules([...rules, newRule]);
+  };
+
+  const deleteRule = (ruleIndex: number) => {
+    if (!confirm('이 규칙을 삭제하시겠습니까?')) return;
+    const updated = rules.filter((_, i) => i !== ruleIndex);
+    // 우선순위 재정렬
+    updated.forEach((rule, i) => {
+      rule.priority = i + 1;
+    });
+    setRules(updated);
+  };
+
+  const updateRule = (ruleIndex: number, field: keyof SelectionRule, value: unknown) => {
+    const updated = [...rules];
+    updated[ruleIndex] = { ...updated[ruleIndex], [field]: value };
+    setRules(updated);
+  };
+
+  const addCondition = (ruleIndex: number) => {
+    const updated = [...rules];
+    updated[ruleIndex].conditions.push({ questionId: '', operator: '==', value: '' });
+    setRules(updated);
+  };
+
+  const deleteCondition = (ruleIndex: number, condIndex: number) => {
+    const updated = [...rules];
+    if (updated[ruleIndex].conditions.length > 1) {
+      updated[ruleIndex].conditions = updated[ruleIndex].conditions.filter((_, i) => i !== condIndex);
+      setRules(updated);
+    }
+  };
+
+  const updateCondition = (ruleIndex: number, condIndex: number, field: keyof RuleCondition, value: string) => {
+    const updated = [...rules];
+    updated[ruleIndex].conditions[condIndex] = {
+      ...updated[ruleIndex].conditions[condIndex],
+      [field]: value,
+    };
+    setRules(updated);
+  };
+
+  const getQuestionText = (questionId: string) => {
+    for (const section of questionSections) {
+      const question = section.questions.find(q => q.id === questionId);
+      if (question) {
+        return question.text.length > 30 ? question.text.substring(0, 30) + '...' : question.text;
+      }
+    }
+    return questionId;
+  };
+
   const handleSave = async () => {
     if (!id) return;
 
@@ -238,6 +334,18 @@ export default function TemplateEdit() {
       });
 
       if (!varsRes.ok) throw new Error('변수 매핑 저장에 실패했습니다.');
+
+      // 선택 규칙 저장
+      const rulesRes = await fetch('/api/templates/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: id,
+          rules: rules,
+        }),
+      });
+
+      if (!rulesRes.ok) throw new Error('선택 규칙 저장에 실패했습니다.');
 
       alert('저장되었습니다.');
       navigate('/admin/templates');
@@ -434,6 +542,169 @@ export default function TemplateEdit() {
 
         <div style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--color-gray-500)' }}>
           총 {variables.length}개의 변수
+        </div>
+      </div>
+
+      {/* 섹션 3: 선택 규칙 */}
+      <div className="card" style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h3 style={{ color: 'var(--color-gray-700)', marginBottom: '4px' }}>선택 규칙</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-gray-500)', margin: 0 }}>
+              이 템플릿이 언제 사용되어야 하나요?
+            </p>
+          </div>
+          <button className="btn btn-secondary" onClick={addRule}>
+            + 규칙 추가
+          </button>
+        </div>
+
+        {rules.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">📋</div>
+            <h3 style={{ marginBottom: '8px', color: 'var(--color-gray-700)' }}>규칙이 없습니다</h3>
+            <p>"규칙 추가" 버튼을 클릭하여 템플릿 선택 조건을 설정하세요.</p>
+          </div>
+        ) : (
+          <div className="rules-container">
+            {rules.map((rule, ruleIndex) => (
+              <div key={ruleIndex} className="rule-card">
+                <div className="rule-header">
+                  <span className="rule-title">규칙 {ruleIndex + 1}</span>
+                  <button
+                    className="btn btn-danger"
+                    style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                    onClick={() => deleteRule(ruleIndex)}
+                  >
+                    삭제
+                  </button>
+                </div>
+
+                <div className="rule-body">
+                  {/* 특수 옵션 */}
+                  <div className="rule-special-options">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={rule.isAlwaysInclude}
+                        onChange={(e) => updateRule(ruleIndex, 'isAlwaysInclude', e.target.checked)}
+                      />
+                      <span>항상 사용</span>
+                      <small>(모든 경우에 이 템플릿 포함)</small>
+                    </label>
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={rule.isManualOnly}
+                        onChange={(e) => updateRule(ruleIndex, 'isManualOnly', e.target.checked)}
+                      />
+                      <span>수동 선택만</span>
+                      <small>(자동 추천 안 함)</small>
+                    </label>
+                  </div>
+
+                  {/* 조건들 - 항상 사용이 아닐 때만 표시 */}
+                  {!rule.isAlwaysInclude && (
+                    <div className="rule-conditions">
+                      <div className="conditions-label">조건:</div>
+                      {rule.conditions.map((condition, condIndex) => (
+                        <div key={condIndex} className="condition-row">
+                          {condIndex > 0 && (
+                            <span className="condition-connector">AND</span>
+                          )}
+                          <div className="condition-fields">
+                            <select
+                              value={condition.questionId}
+                              onChange={(e) => updateCondition(ruleIndex, condIndex, 'questionId', e.target.value)}
+                              className="condition-select"
+                            >
+                              <option value="">질문 선택...</option>
+                              {questionSections.map(section => (
+                                <optgroup key={section.id} label={section.title}>
+                                  {section.questions.map(q => (
+                                    <option key={q.id} value={q.id}>
+                                      {q.text.length > 35 ? q.text.substring(0, 35) + '...' : q.text}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                              ))}
+                            </select>
+                            <select
+                              value={condition.operator}
+                              onChange={(e) => updateCondition(ruleIndex, condIndex, 'operator', e.target.value)}
+                              className="condition-operator"
+                            >
+                              {OPERATORS.map(op => (
+                                <option key={op.value} value={op.value}>{op.label}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              value={condition.value}
+                              onChange={(e) => updateCondition(ruleIndex, condIndex, 'value', e.target.value)}
+                              placeholder={condition.operator === 'in' ? '값1,값2,값3' : '값 입력'}
+                              className="condition-value"
+                            />
+                            {rule.conditions.length > 1 && (
+                              <button
+                                className="condition-delete"
+                                onClick={() => deleteCondition(ruleIndex, condIndex)}
+                                title="조건 삭제"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        className="btn btn-outline"
+                        style={{ marginTop: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
+                        onClick={() => addCondition(ruleIndex)}
+                      >
+                        + 조건 추가
+                      </button>
+                    </div>
+                  )}
+
+                  {/* 우선순위 */}
+                  <div className="rule-priority">
+                    <label>우선순위:</label>
+                    <select
+                      value={rule.priority}
+                      onChange={(e) => updateRule(ruleIndex, 'priority', parseInt(e.target.value))}
+                    >
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                        <option key={num} value={num}>{num}</option>
+                      ))}
+                    </select>
+                    <small>(낮을수록 먼저 평가)</small>
+                  </div>
+
+                  {/* 규칙 미리보기 */}
+                  {!rule.isAlwaysInclude && rule.conditions.some(c => c.questionId && c.value) && (
+                    <div className="rule-preview">
+                      <strong>규칙 요약:</strong>
+                      <code>
+                        {rule.conditions
+                          .filter(c => c.questionId && c.value)
+                          .map((c, i) => {
+                            const questionText = getQuestionText(c.questionId);
+                            const opLabel = OPERATORS.find(o => o.value === c.operator)?.label || c.operator;
+                            return `${i > 0 ? ' AND ' : ''}${questionText} ${opLabel} "${c.value}"`;
+                          })
+                          .join('')}
+                      </code>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--color-gray-500)' }}>
+          총 {rules.length}개의 규칙
         </div>
       </div>
 

@@ -1056,6 +1056,217 @@ tr:last-child td {
   font-size: 0.9rem;
 }
 
+/* Selection Rules */
+.rules-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.rule-card {
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.rule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.rule-title {
+  font-weight: 600;
+  color: var(--color-gray-700);
+}
+
+.rule-body {
+  padding: var(--spacing-lg);
+}
+
+.rule-special-options {
+  display: flex;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  font-weight: 500;
+  color: var(--color-gray-700);
+}
+
+.checkbox-label small {
+  color: var(--color-gray-500);
+  font-size: 0.8rem;
+}
+
+.rule-conditions {
+  margin-bottom: var(--spacing-lg);
+}
+
+.conditions-label {
+  font-weight: 500;
+  color: var(--color-gray-700);
+  margin-bottom: var(--spacing-md);
+}
+
+.condition-row {
+  margin-bottom: var(--spacing-sm);
+}
+
+.condition-connector {
+  display: inline-block;
+  background: var(--color-primary);
+  color: var(--color-white);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+}
+
+.condition-fields {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.condition-select {
+  flex: 2;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+.condition-operator {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+.condition-value {
+  flex: 1.5;
+  min-width: 150px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+.condition-delete {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-error);
+  color: var(--color-white);
+  border: none;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.condition-delete:hover {
+  opacity: 0.8;
+}
+
+.rule-priority {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.rule-priority label {
+  font-weight: 500;
+  color: var(--color-gray-700);
+}
+
+.rule-priority select {
+  width: 80px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-md);
+}
+
+.rule-priority small {
+  color: var(--color-gray-500);
+  font-size: 0.8rem;
+}
+
+.rule-preview {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.rule-preview strong {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--color-gray-600);
+  margin-bottom: var(--spacing-sm);
+}
+
+.rule-preview code {
+  display: block;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .rule-special-options {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .condition-fields {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .condition-select,
+  .condition-operator,
+  .condition-value {
+    min-width: 100%;
+  }
+
+  .condition-delete {
+    align-self: flex-end;
+  }
+}
+
 /* Variable List */
 .variable-list {
   display: flex;

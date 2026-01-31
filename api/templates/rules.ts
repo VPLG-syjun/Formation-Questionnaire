@@ -25,9 +25,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     client = await getRedisClient();
 
     if (req.method === 'POST') {
-      // 템플릿 규칙 생성
+      const { templateId, rules } = req.body;
+
+      // 일괄 저장 모드 (rules 배열이 있는 경우)
+      if (templateId && Array.isArray(rules)) {
+        // 템플릿 존재 확인
+        const templateExists = await client.hExists(TEMPLATES_KEY, templateId);
+        if (!templateExists) {
+          return res.status(404).json({ error: '템플릿을 찾을 수 없습니다.' });
+        }
+
+        // 기존 규칙 삭제
+        const allRules = await client.hGetAll(TEMPLATE_RULES_KEY);
+        for (const [ruleId, ruleData] of Object.entries(allRules)) {
+          const rule = JSON.parse(ruleData);
+          if (rule.templateId === templateId) {
+            await client.hDel(TEMPLATE_RULES_KEY, ruleId);
+          }
+        }
+
+        // 새 규칙 저장
+        const savedRules = [];
+        for (const r of rules) {
+          const id = r.id || uuidv4();
+          const rule = {
+            id,
+            templateId,
+            conditions: r.conditions || [],
+            priority: r.priority ?? 1,
+            isAlwaysInclude: r.isAlwaysInclude || false,
+            isManualOnly: r.isManualOnly || false,
+          };
+
+          await client.hSet(TEMPLATE_RULES_KEY, id, JSON.stringify(rule));
+          savedRules.push(rule);
+        }
+
+        return res.status(200).json({
+          message: `${savedRules.length}개의 규칙이 저장되었습니다.`,
+          rules: savedRules,
+        });
+      }
+
+      // 단일 규칙 생성 모드 (기존 방식)
       const {
-        templateId,
         ruleType,
         questionId,
         conditionOperator,
