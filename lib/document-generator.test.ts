@@ -6,6 +6,8 @@
 import {
   numberToKorean,
   numberToKoreanCurrency,
+  numberToEnglish,
+  numberToEnglishCurrency,
   formatNumberWithComma,
   formatDate,
   formatPhone,
@@ -86,6 +88,49 @@ test('numberToKorean: 10000000 → 천만원', () => {
 
 test('formatNumberWithComma: 10000000', () => {
   assertEqual(formatNumberWithComma(10000000), '10,000,000');
+});
+
+// ============================================
+// 숫자 → 영어 변환 테스트
+// ============================================
+
+console.log('\n📝 숫자 → 영어 변환 테스트');
+console.log('─'.repeat(40));
+
+test('numberToEnglish: 0', () => {
+  assertEqual(numberToEnglish(0), 'Zero');
+});
+
+test('numberToEnglish: 1', () => {
+  assertEqual(numberToEnglish(1), 'One');
+});
+
+test('numberToEnglish: 15', () => {
+  assertEqual(numberToEnglish(15), 'Fifteen');
+});
+
+test('numberToEnglish: 100', () => {
+  assertEqual(numberToEnglish(100), 'One Hundred');
+});
+
+test('numberToEnglish: 1000', () => {
+  assertEqual(numberToEnglish(1000), 'One Thousand');
+});
+
+test('numberToEnglish: 1000000', () => {
+  assertEqual(numberToEnglish(1000000), 'One Million');
+});
+
+test('numberToEnglish: 12345', () => {
+  assertEqual(numberToEnglish(12345), 'Twelve Thousand Three Hundred Forty Five');
+});
+
+test('numberToEnglishCurrency: 1000000', () => {
+  assertEqual(numberToEnglishCurrency(1000000), 'One Million Dollars');
+});
+
+test('numberToEnglishCurrency: 1', () => {
+  assertEqual(numberToEnglishCurrency(1), 'One Dollar');
 });
 
 // ============================================
@@ -197,14 +242,15 @@ test('transformSurveyToVariables: 기본 동작', () => {
   const responses: SurveyResponse[] = [
     { questionId: 'companyName1', value: 'Test Corp' },
     { questionId: 'email', value: 'TEST@EXAMPLE.COM' },
-    { questionId: 'founder1Cash', value: '10000000' },
+    { questionId: 'founder1Cash', value: '1000000' },
     { questionId: 'state', value: 'delaware' },
   ];
 
   const mappings: VariableMapping[] = [
     { variableName: 'companyName', questionId: 'companyName1', dataType: 'text', transformRule: 'none', required: true },
     { variableName: 'email', questionId: 'email', dataType: 'email', transformRule: 'none', required: true },
-    { variableName: 'capital', questionId: 'founder1Cash', dataType: 'currency', transformRule: 'number_korean', required: true },
+    { variableName: 'capital', questionId: 'founder1Cash', dataType: 'currency', transformRule: 'number_english', required: true },
+    { variableName: 'capitalFormatted', questionId: 'founder1Cash', dataType: 'currency', transformRule: 'comma_dollar', required: true },
     { variableName: 'state', questionId: 'state', dataType: 'text', transformRule: 'uppercase', required: true },
   ];
 
@@ -212,12 +258,13 @@ test('transformSurveyToVariables: 기본 동작', () => {
 
   assertEqual(result['companyName'], 'Test Corp');
   assertEqual(result['email'], 'test@example.com');
-  assertEqual(result['capital'], '천만원');
+  assertEqual(result['capital'], 'One Million Dollars');
+  assertEqual(result['capitalFormatted'], '$1,000,000');
   assertEqual(result['state'], 'DELAWARE');
 
-  // 자동 생성 변수 확인
-  if (!result['생성일']) throw new Error('생성일 missing');
-  if (!result['문서번호']) throw new Error('문서번호 missing');
+  // 자동 생성 변수 확인 (영문)
+  if (!result['currentDate']) throw new Error('currentDate missing');
+  if (!result['documentNumber']) throw new Error('documentNumber missing');
 });
 
 test('transformSurveyToVariables: 날짜 변환', () => {

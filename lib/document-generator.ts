@@ -115,7 +115,92 @@ export function numberToKoreanCurrency(num: number | string): string {
 export function formatNumberWithComma(num: number | string): string {
   const n = typeof num === 'string' ? parseFloat(num.replace(/[^0-9.-]/g, '')) : num;
   if (isNaN(n)) return '0';
-  return n.toLocaleString('ko-KR');
+  return n.toLocaleString('en-US');
+}
+
+// ============================================
+// 숫자 → 영어 변환 유틸리티
+// ============================================
+
+const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+const SCALES = ['', 'Thousand', 'Million', 'Billion', 'Trillion'];
+
+/**
+ * 숫자를 영어로 변환
+ * @example numberToEnglish(1000000) → "One Million"
+ * @example numberToEnglish(12345) → "Twelve Thousand Three Hundred Forty Five"
+ */
+export function numberToEnglish(num: number | string): string {
+  const n = typeof num === 'string' ? parseInt(num.replace(/[^0-9]/g, ''), 10) : num;
+
+  if (isNaN(n)) return '';
+  if (n === 0) return 'Zero';
+  if (n < 0) return 'Negative ' + numberToEnglish(-n);
+
+  const words: string[] = [];
+  let numStr = n.toString();
+
+  // 3자리씩 끊어서 처리
+  const chunks: number[] = [];
+  while (numStr.length > 0) {
+    chunks.unshift(parseInt(numStr.slice(-3), 10) || 0);
+    numStr = numStr.slice(0, -3);
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (chunk === 0) continue;
+
+    const scaleIndex = chunks.length - 1 - i;
+    const chunkWords = convertEnglishChunk(chunk);
+
+    if (chunkWords) {
+      words.push(chunkWords);
+      if (SCALES[scaleIndex]) {
+        words.push(SCALES[scaleIndex]);
+      }
+    }
+  }
+
+  return words.join(' ') || 'Zero';
+}
+
+function convertEnglishChunk(num: number): string {
+  if (num === 0) return '';
+
+  const words: string[] = [];
+
+  // 백의 자리
+  const hundreds = Math.floor(num / 100);
+  if (hundreds > 0) {
+    words.push(ONES[hundreds] + ' Hundred');
+  }
+
+  // 십의 자리와 일의 자리
+  const remainder = num % 100;
+  if (remainder > 0) {
+    if (remainder < 20) {
+      words.push(ONES[remainder]);
+    } else {
+      const tens = Math.floor(remainder / 10);
+      const ones = remainder % 10;
+      words.push(TENS[tens] + (ones > 0 ? ' ' + ONES[ones] : ''));
+    }
+  }
+
+  return words.join(' ');
+}
+
+/**
+ * 숫자를 영어 달러 금액으로 변환
+ * @example numberToEnglishCurrency(1000000) → "One Million Dollars"
+ */
+export function numberToEnglishCurrency(num: number | string): string {
+  const n = typeof num === 'string' ? parseInt(num.replace(/[^0-9]/g, ''), 10) : num;
+  if (n === 1) return 'One Dollar';
+  return numberToEnglish(n) + ' Dollars';
 }
 
 // ============================================
@@ -354,13 +439,16 @@ export function transformSurveyToVariables(
 ): Record<string, string> {
   const result: Record<string, string> = {};
 
-  // 1. 특수 변수 자동 생성
-  result['생성일'] = getCurrentDate('YYYY년 MM월 DD일');
-  result['생성일_영문'] = getCurrentDate('MMMM D, YYYY');
-  result['생성일_숫자'] = getCurrentDate('YYYY-MM-DD');
-  result['생성시각'] = getCurrentTime('HH:mm');
-  result['문서번호'] = options.documentNumber || generateDocumentNumber('FR');
-  result['현재연도'] = new Date().getFullYear().toString();
+  // 1. 특수 변수 자동 생성 (영문 템플릿용)
+  result['currentDate'] = getCurrentDate('MMMM D, YYYY');
+  result['currentDateShort'] = getCurrentDate('MM/DD/YYYY');
+  result['currentDateISO'] = getCurrentDate('YYYY-MM-DD');
+  result['currentTime'] = getCurrentTime('h:mm A');
+  result['documentNumber'] = options.documentNumber || generateDocumentNumber('FR');
+  result['currentYear'] = new Date().getFullYear().toString();
+
+  // 한글 날짜 (필요한 경우)
+  result['currentDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
 
   // 2. 매핑된 변수 처리
   for (const mapping of variableMappings) {
@@ -412,17 +500,24 @@ export function transformSurveyToVariables(
 
       case 'currency':
         switch (mapping.transformRule) {
+          case 'number_english':
+            transformedValue = numberToEnglishCurrency(value);
+            break;
           case 'number_korean':
             transformedValue = numberToKoreanCurrency(value);
-            break;
-          case 'comma_won':
-            transformedValue = formatNumberWithComma(value) + '원';
             break;
           case 'comma_dollar':
             transformedValue = '$' + formatNumberWithComma(value);
             break;
+          case 'comma_dollar_cents':
+            const numVal = parseFloat(value.replace(/[^0-9.-]/g, ''));
+            transformedValue = '$' + numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            break;
+          case 'comma_won':
+            transformedValue = formatNumberWithComma(value) + '원';
+            break;
           default:
-            transformedValue = value;
+            transformedValue = '$' + formatNumberWithComma(value);
         }
         break;
 
@@ -519,10 +614,14 @@ export default {
   getCurrentDate,
   getCurrentTime,
 
-  // 숫자 유틸리티
+  // 숫자 유틸리티 (영문)
+  numberToEnglish,
+  numberToEnglishCurrency,
+  formatNumberWithComma,
+
+  // 숫자 유틸리티 (한글)
   numberToKorean,
   numberToKoreanCurrency,
-  formatNumberWithComma,
 
   // 문자열 유틸리티
   formatPhone,

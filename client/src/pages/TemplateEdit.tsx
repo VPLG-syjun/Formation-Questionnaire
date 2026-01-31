@@ -60,35 +60,37 @@ const DATA_TYPES = [
 
 const TRANSFORM_RULES: Record<string, { value: string; label: string }[]> = {
   text: [
-    { value: 'none', label: '없음' },
-    { value: 'uppercase', label: '대문자' },
-    { value: 'lowercase', label: '소문자' },
-    { value: 'capitalize', label: '첫글자대문자' },
+    { value: 'none', label: 'None' },
+    { value: 'uppercase', label: 'UPPERCASE' },
+    { value: 'lowercase', label: 'lowercase' },
+    { value: 'capitalize', label: 'Capitalize' },
+    { value: 'title', label: 'Title Case' },
   ],
   date: [
-    { value: 'none', label: '없음' },
-    { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
-    { value: 'YYYY년 MM월 DD일', label: 'YYYY년 MM월 DD일' },
+    { value: 'MMMM D, YYYY', label: 'January 1, 2026 (Recommended)' },
     { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
-    { value: 'MMMM D, YYYY', label: 'January 1, 2026' },
+    { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (ISO)' },
+    { value: 'MMM D, YYYY', label: 'Jan 1, 2026' },
+    { value: 'none', label: 'None' },
   ],
   number: [
-    { value: 'none', label: '없음' },
-    { value: 'comma', label: '천단위 콤마' },
+    { value: 'comma', label: 'Comma (1,000,000)' },
+    { value: 'none', label: 'None' },
   ],
   currency: [
-    { value: 'none', label: '없음' },
-    { value: 'number_korean', label: '숫자_한글 (일천만원)' },
-    { value: 'comma_won', label: '콤마_원 (10,000,000원)' },
-    { value: 'comma_dollar', label: '콤마_달러 ($10,000,000)' },
+    { value: 'comma_dollar', label: '$1,000,000 (Recommended)' },
+    { value: 'comma_dollar_cents', label: '$1,000,000.00' },
+    { value: 'number_english', label: 'One Million Dollars' },
+    { value: 'number_korean', label: '일천만원 (Korean)' },
+    { value: 'none', label: 'None' },
   ],
   email: [
-    { value: 'none', label: '없음' },
+    { value: 'none', label: 'None (lowercase)' },
   ],
   phone: [
-    { value: 'none', label: '없음' },
-    { value: 'dashed', label: '하이픈 형식 (010-1234-5678)' },
-    { value: 'dotted', label: '점 형식 (010.1234.5678)' },
+    { value: 'dashed', label: 'Dashed (010-1234-5678)' },
+    { value: 'dotted', label: 'Dotted (010.1234.5678)' },
+    { value: 'none', label: 'None' },
   ],
 };
 
