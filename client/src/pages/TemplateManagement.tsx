@@ -145,10 +145,11 @@ export default function TemplateManagement() {
         reader.readAsDataURL(selectedFile);
       });
 
-      const response = await fetch('/api/templates/upload', {
+      const response = await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'upload',
           name: formData.name,
           displayName: formData.displayName,
           category: formData.category,

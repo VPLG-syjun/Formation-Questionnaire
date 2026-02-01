@@ -92,6 +92,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      // 직접 입력 변수 조회 모드
+      if (action === 'getManual') {
+        const { templateIds } = req.body;
+
+        if (!templateIds || !Array.isArray(templateIds) || templateIds.length === 0) {
+          return res.status(400).json({ error: 'templateIds array is required' });
+        }
+
+        // 템플릿 정보 조회
+        const templatesMap: Record<string, string> = {};
+        for (const tid of templateIds) {
+          const templateData = await client.hGet(TEMPLATES_KEY, tid);
+          if (templateData) {
+            const template = JSON.parse(templateData);
+            templatesMap[tid] = template.displayName || template.name;
+          }
+        }
+
+        // 모든 변수 조회
+        const allVariables = await client.hGetAll(TEMPLATE_VARIABLES_KEY);
+        const varsList = Object.values(allVariables).map(v => JSON.parse(v as string));
+
+        // 선택된 템플릿의 직접 입력 변수만 필터링
+        const manualVariables = varsList
+          .filter(v =>
+            templateIds.includes(v.templateId) &&
+            (v.questionId === '__manual__' || v.questionId === '__calculated__')
+          )
+          .map(v => ({
+            id: v.id,
+            templateId: v.templateId,
+            templateName: templatesMap[v.templateId] || v.templateId,
+            variableName: v.variableName,
+            dataType: v.dataType || 'text',
+            transformRule: v.transformRule || 'none',
+            required: v.required || false,
+            defaultValue: v.defaultValue || '',
+          }));
+
+        // 변수명으로 그룹화
+        const groupedVariables: Record<string, typeof manualVariables> = {};
+        manualVariables.forEach(v => {
+          if (!groupedVariables[v.variableName]) {
+            groupedVariables[v.variableName] = [];
+          }
+          groupedVariables[v.variableName].push(v);
+        });
+
+        // 중복 제거된 고유 변수 목록
+        const uniqueVariables = Object.entries(groupedVariables).map(([variableName, vars]) => {
+          const isRequired = vars.some(v => v.required);
+          const firstVar = vars[0];
+          return {
+            variableName,
+            dataType: firstVar.dataType,
+            transformRule: firstVar.transformRule,
+            required: isRequired,
+            defaultValue: firstVar.defaultValue,
+            usedInTemplates: vars.map(v => v.templateName),
+          };
+        });
+
+        return res.status(200).json({
+          variables: uniqueVariables,
+          totalCount: uniqueVariables.length,
+          requiredCount: uniqueVariables.filter(v => v.required).length,
+        });
+      }
+
       // 일괄 저장 모드 (variables 배열이 있는 경우)
       if (templateId && Array.isArray(variables)) {
         // 템플릿 존재 확인

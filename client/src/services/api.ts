@@ -170,10 +170,10 @@ export interface ManualVariablesResponse {
 }
 
 export async function getManualVariables(templateIds: string[]): Promise<ManualVariablesResponse> {
-  const response = await fetch(`${API_BASE}/admin/get-manual-variables`, {
+  const response = await fetch(`${API_BASE}/templates/variables`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ templateIds }),
+    body: JSON.stringify({ action: 'getManual', templateIds }),
   });
 
   if (!response.ok) {
