@@ -75,6 +75,8 @@ const TRANSFORM_RULES: Record<string, { value: string; label: string }[]> = {
   ],
   number: [
     { value: 'comma', label: 'Comma (1,000,000)' },
+    { value: 'number_english', label: 'English (Two, Three)' },
+    { value: 'ordinal_english', label: 'Ordinal (First, Second, Third)' },
     { value: 'none', label: 'None' },
   ],
   currency: [

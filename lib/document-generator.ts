@@ -243,6 +243,61 @@ export function numberToEnglishCurrency(num: number | string): string {
   return numberToEnglish(n) + ' Dollars';
 }
 
+/**
+ * 숫자를 영어 서수로 변환
+ * @example numberToOrdinal(1) → "First"
+ * @example numberToOrdinal(2) → "Second"
+ * @example numberToOrdinal(21) → "Twenty First"
+ */
+export function numberToOrdinal(num: number | string): string {
+  const n = typeof num === 'string' ? parseInt(num.replace(/[^0-9]/g, ''), 10) : num;
+
+  if (isNaN(n) || n < 1) return '';
+
+  // 1-19의 서수
+  const ORDINALS_ONES = [
+    '', 'First', 'Second', 'Third', 'Fourth', 'Fifth',
+    'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth',
+    'Eleventh', 'Twelfth', 'Thirteenth', 'Fourteenth', 'Fifteenth',
+    'Sixteenth', 'Seventeenth', 'Eighteenth', 'Nineteenth'
+  ];
+
+  // 10단위 서수
+  const ORDINALS_TENS = [
+    '', '', 'Twentieth', 'Thirtieth', 'Fortieth', 'Fiftieth',
+    'Sixtieth', 'Seventieth', 'Eightieth', 'Ninetieth'
+  ];
+
+  // 10단위 기본형 (합성용)
+  const TENS_BASE = [
+    '', '', 'Twenty', 'Thirty', 'Forty', 'Fifty',
+    'Sixty', 'Seventy', 'Eighty', 'Ninety'
+  ];
+
+  if (n < 20) {
+    return ORDINALS_ONES[n];
+  }
+
+  if (n < 100) {
+    const tens = Math.floor(n / 10);
+    const ones = n % 10;
+    if (ones === 0) {
+      return ORDINALS_TENS[tens];
+    }
+    return TENS_BASE[tens] + ' ' + ORDINALS_ONES[ones];
+  }
+
+  // 100 이상은 기본 숫자 + "th" (간단한 처리)
+  // 예: 100 → "One Hundredth", 101 → "One Hundred First"
+  if (n % 100 === 0) {
+    return numberToEnglish(n / 100) + ' Hundredth';
+  }
+
+  const hundreds = Math.floor(n / 100);
+  const remainder = n % 100;
+  return numberToEnglish(hundreds) + ' Hundred ' + numberToOrdinal(remainder);
+}
+
 // ============================================
 // 날짜 변환 유틸리티
 // ============================================
@@ -562,10 +617,18 @@ export function transformSurveyToVariables(
         break;
 
       case 'number':
-        if (mapping.transformRule === 'comma') {
-          transformedValue = formatNumberWithComma(value);
-        } else {
-          transformedValue = value;
+        switch (mapping.transformRule) {
+          case 'comma':
+            transformedValue = formatNumberWithComma(value);
+            break;
+          case 'number_english':
+            transformedValue = numberToEnglish(value);
+            break;
+          case 'ordinal_english':
+            transformedValue = numberToOrdinal(value);
+            break;
+          default:
+            transformedValue = value;
         }
         break;
 
@@ -979,6 +1042,7 @@ export default {
   // 숫자 유틸리티 (영문)
   numberToEnglish,
   numberToEnglishCurrency,
+  numberToOrdinal,
   formatNumberWithComma,
 
   // 숫자 유틸리티 (한글)
