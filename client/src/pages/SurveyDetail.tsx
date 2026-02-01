@@ -133,14 +133,22 @@ export default function SurveyDetail() {
     setMessage({ type: '', text: '' });
 
     try {
-      await updateSurvey(id, {
+      const result = await updateSurvey(id, {
         adminDates: {
           COIDate: coiDate || undefined,
           SIGNDate: signDate || undefined,
         },
       });
+
+      // API에서 반환된 survey로 직접 업데이트
+      if (result.survey) {
+        setSurvey(result.survey);
+        // 로컬 상태도 명시적으로 업데이트
+        setCoiDate(result.survey.adminDates?.COIDate || '');
+        setSignDate(result.survey.adminDates?.SIGNDate || '');
+      }
+
       setMessage({ type: 'success', text: '날짜가 저장되었습니다.' });
-      loadSurvey(false);
     } catch (err) {
       setMessage({ type: 'error', text: '날짜 저장에 실패했습니다.' });
     } finally {
@@ -156,15 +164,24 @@ export default function SurveyDetail() {
     setMessage({ type: '', text: '' });
 
     try {
-      await updateSurvey(id, {
+      const result = await updateSurvey(id, {
         adminValues: {
           authorizedShares: authorizedShares || undefined,
           parValue: parValue || undefined,
           fairMarketValue: fairMarketValue || undefined,
         },
       });
+
+      // API에서 반환된 survey로 직접 업데이트
+      if (result.survey) {
+        setSurvey(result.survey);
+        // 로컬 상태도 명시적으로 업데이트
+        setAuthorizedShares(result.survey.adminValues?.authorizedShares || '');
+        setParValue(result.survey.adminValues?.parValue || '');
+        setFairMarketValue(result.survey.adminValues?.fairMarketValue || '');
+      }
+
       setMessage({ type: 'success', text: '값이 저장되었습니다.' });
-      loadSurvey(false);
     } catch (err) {
       setMessage({ type: 'error', text: '값 저장에 실패했습니다.' });
     } finally {
