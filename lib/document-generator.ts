@@ -34,11 +34,14 @@ export interface RuleCondition {
   questionId: string;
   operator: '==' | '!=' | 'contains' | 'not_contains' | 'in' | '>' | '>=' | '<' | '<=';
   value: string;
+  valueType?: 'literal' | 'question';  // 'literal' = 직접 입력값, 'question' = 다른 질문 참조
+  valueQuestionId?: string;            // valueType이 'question'일 때 참조할 질문 ID
 }
 
 export interface SelectionRule {
   id?: string;
   conditions: RuleCondition[];
+  logicalOperator?: 'AND' | 'OR';      // 조건 간 논리 연산자 (기본값: AND)
   priority: number;
   isAlwaysInclude: boolean;
   isManualOnly: boolean;
@@ -738,7 +741,22 @@ export function evaluateCondition(
 
   // 배열 값을 문자열로 변환
   const valueStr = Array.isArray(actualValue) ? actualValue.join(',') : String(actualValue);
-  const conditionValue = condition.value;
+
+  // 비교할 값 결정: 다른 질문 참조 또는 직접 입력값
+  let conditionValue: string;
+  if (condition.valueType === 'question' && condition.valueQuestionId) {
+    // 다른 질문의 답변과 비교
+    const refResponse = responses.find(r => r.questionId === condition.valueQuestionId);
+    const refValue = refResponse?.value;
+    if (refValue === undefined || refValue === null) {
+      // 참조 질문에 답변이 없으면 비교 불가
+      return condition.operator === '!=';
+    }
+    conditionValue = Array.isArray(refValue) ? refValue.join(',') : String(refValue);
+  } else {
+    // 직접 입력값과 비교
+    conditionValue = condition.value;
+  }
 
   switch (condition.operator) {
     case '==':
@@ -845,7 +863,7 @@ export function evaluateRules(
     };
   }
 
-  // 일반 규칙 평가 - 각 규칙의 모든 조건이 AND 관계
+  // 일반 규칙 평가 - AND 또는 OR 논리 연산자 지원
   let matchedRules = 0;
   let highestPriorityMatch = false;
 
@@ -856,12 +874,21 @@ export function evaluateRules(
     // 규칙에 조건이 없으면 건너뛰기
     if (!rule.conditions || rule.conditions.length === 0) continue;
 
-    // 모든 조건이 충족되어야 규칙 매치 (AND 관계)
-    const allConditionsMet = rule.conditions.every(condition =>
-      evaluateCondition(condition, responses)
-    );
+    // 논리 연산자에 따라 조건 평가
+    let conditionsMet: boolean;
+    if (rule.logicalOperator === 'OR') {
+      // OR: 하나라도 충족되면 true
+      conditionsMet = rule.conditions.some(condition =>
+        evaluateCondition(condition, responses)
+      );
+    } else {
+      // AND (기본값): 모든 조건이 충족되어야 true
+      conditionsMet = rule.conditions.every(condition =>
+        evaluateCondition(condition, responses)
+      );
+    }
 
-    if (allConditionsMet) {
+    if (conditionsMet) {
       matchedRules++;
       // 첫 번째 매칭 규칙이 가장 높은 우선순위
       if (!highestPriorityMatch) {

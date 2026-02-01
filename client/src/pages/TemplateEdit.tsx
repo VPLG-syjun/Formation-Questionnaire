@@ -25,11 +25,14 @@ interface RuleCondition {
   questionId: string;
   operator: string;
   value: string;
+  valueType?: 'literal' | 'question';  // 'literal' = 직접 입력, 'question' = 다른 질문 참조
+  valueQuestionId?: string;            // valueType이 'question'일 때 참조할 질문 ID
 }
 
 interface SelectionRule {
   id?: string;
   conditions: RuleCondition[];
+  logicalOperator?: 'AND' | 'OR';      // 조건 간 논리 연산자 (기본값: AND)
   priority: number;
   isAlwaysInclude: boolean;
   isManualOnly: boolean;
@@ -256,7 +259,8 @@ export default function TemplateEdit() {
   // 규칙 관리 함수들
   const addRule = () => {
     const newRule: SelectionRule = {
-      conditions: [{ questionId: '', operator: '==', value: '' }],
+      conditions: [{ questionId: '', operator: '==', value: '', valueType: 'literal' }],
+      logicalOperator: 'AND',
       priority: rules.length + 1,
       isAlwaysInclude: false,
       isManualOnly: false,
@@ -282,7 +286,7 @@ export default function TemplateEdit() {
 
   const addCondition = (ruleIndex: number) => {
     const updated = [...rules];
-    updated[ruleIndex].conditions.push({ questionId: '', operator: '==', value: '' });
+    updated[ruleIndex].conditions.push({ questionId: '', operator: '==', value: '', valueType: 'literal' });
     setRules(updated);
   };
 
@@ -614,11 +618,37 @@ export default function TemplateEdit() {
                   {/* 조건들 - 항상 사용이 아닐 때만 표시 */}
                   {!rule.isAlwaysInclude && (
                     <div className="rule-conditions">
-                      <div className="conditions-label">조건:</div>
+                      <div className="conditions-header">
+                        <span className="conditions-label">조건:</span>
+                        {rule.conditions.length > 1 && (
+                          <div className="logical-operator-selector">
+                            <label>
+                              <input
+                                type="radio"
+                                name={`logical-op-${ruleIndex}`}
+                                value="AND"
+                                checked={rule.logicalOperator !== 'OR'}
+                                onChange={() => updateRule(ruleIndex, 'logicalOperator', 'AND')}
+                              />
+                              <span>AND (모두 충족)</span>
+                            </label>
+                            <label>
+                              <input
+                                type="radio"
+                                name={`logical-op-${ruleIndex}`}
+                                value="OR"
+                                checked={rule.logicalOperator === 'OR'}
+                                onChange={() => updateRule(ruleIndex, 'logicalOperator', 'OR')}
+                              />
+                              <span>OR (하나라도 충족)</span>
+                            </label>
+                          </div>
+                        )}
+                      </div>
                       {rule.conditions.map((condition, condIndex) => (
                         <div key={condIndex} className="condition-row">
                           {condIndex > 0 && (
-                            <span className="condition-connector">AND</span>
+                            <span className="condition-connector">{rule.logicalOperator || 'AND'}</span>
                           )}
                           <div className="condition-fields">
                             <select
@@ -646,13 +676,62 @@ export default function TemplateEdit() {
                                 <option key={op.value} value={op.value}>{op.label}</option>
                               ))}
                             </select>
-                            <input
-                              type="text"
-                              value={condition.value}
-                              onChange={(e) => updateCondition(ruleIndex, condIndex, 'value', e.target.value)}
-                              placeholder={condition.operator === 'in' ? '값1,값2,값3' : '값 입력'}
-                              className="condition-value"
-                            />
+                            {/* 값 타입 선택 */}
+                            <select
+                              value={condition.valueType || 'literal'}
+                              onChange={(e) => {
+                                const updated = [...rules];
+                                updated[ruleIndex].conditions[condIndex] = {
+                                  ...condition,
+                                  valueType: e.target.value as 'literal' | 'question',
+                                  value: e.target.value === 'question' ? '' : condition.value,
+                                  valueQuestionId: e.target.value === 'question' ? condition.valueQuestionId : undefined,
+                                };
+                                setRules(updated);
+                              }}
+                              className="condition-value-type"
+                              style={{ minWidth: '100px' }}
+                            >
+                              <option value="literal">직접 입력</option>
+                              <option value="question">다른 질문</option>
+                            </select>
+                            {/* 직접 입력 또는 질문 선택 */}
+                            {(condition.valueType || 'literal') === 'literal' ? (
+                              <input
+                                type="text"
+                                value={condition.value}
+                                onChange={(e) => updateCondition(ruleIndex, condIndex, 'value', e.target.value)}
+                                placeholder={condition.operator === 'in' ? '값1,값2,값3' : '값 입력'}
+                                className="condition-value"
+                              />
+                            ) : (
+                              <select
+                                value={condition.valueQuestionId || ''}
+                                onChange={(e) => {
+                                  const updated = [...rules];
+                                  updated[ruleIndex].conditions[condIndex] = {
+                                    ...condition,
+                                    valueQuestionId: e.target.value,
+                                  };
+                                  setRules(updated);
+                                }}
+                                className="condition-value-question"
+                                style={{ minWidth: '180px' }}
+                              >
+                                <option value="">비교할 질문 선택...</option>
+                                {questionSections.map(section => (
+                                  <optgroup key={section.id} label={section.title}>
+                                    {section.questions
+                                      .filter(q => q.id !== condition.questionId)
+                                      .map(q => (
+                                        <option key={q.id} value={q.id}>
+                                          {q.text.length > 30 ? q.text.substring(0, 30) + '...' : q.text}
+                                        </option>
+                                      ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            )}
                             {rule.conditions.length > 1 && (
                               <button
                                 className="condition-delete"
