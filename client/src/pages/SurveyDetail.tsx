@@ -23,15 +23,23 @@ export default function SurveyDetail() {
   const [coiDate, setCoiDate] = useState('');
   const [signDate, setSignDate] = useState('');
 
+  // 관리자 값 상태
+  const [authorizedShares, setAuthorizedShares] = useState('');
+  const [parValue, setParValue] = useState('');
+  const [fairMarketValue, setFairMarketValue] = useState('');
+
   useEffect(() => {
     loadSurvey();
   }, [id]);
 
-  // survey가 로드되면 날짜 상태 초기화
+  // survey가 로드되면 날짜/값 상태 초기화
   useEffect(() => {
     if (survey) {
       setCoiDate(survey.adminDates?.COIDate || '');
       setSignDate(survey.adminDates?.SIGNDate || '');
+      setAuthorizedShares(survey.adminValues?.authorizedShares || '');
+      setParValue(survey.adminValues?.parValue || '');
+      setFairMarketValue(survey.adminValues?.fairMarketValue || '');
     }
   }, [survey]);
 
@@ -135,6 +143,30 @@ export default function SurveyDetail() {
       loadSurvey(false);
     } catch (err) {
       setMessage({ type: 'error', text: '날짜 저장에 실패했습니다.' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 관리자 값 저장
+  const handleSaveValues = async () => {
+    if (!id) return;
+
+    setIsUpdating(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      await updateSurvey(id, {
+        adminValues: {
+          authorizedShares: authorizedShares || undefined,
+          parValue: parValue || undefined,
+          fairMarketValue: fairMarketValue || undefined,
+        },
+      });
+      setMessage({ type: 'success', text: '값이 저장되었습니다.' });
+      loadSurvey(false);
+    } catch (err) {
+      setMessage({ type: 'error', text: '값 저장에 실패했습니다.' });
     } finally {
       setIsUpdating(false);
     }
@@ -317,6 +349,79 @@ export default function SurveyDetail() {
               </div>
             ))
           )}
+        </div>
+
+        {/* Admin Values - Shares & Values */}
+        <div className="detail-section">
+          <h3>주식 및 가치 설정</h3>
+          <p className="section-description">
+            문서 생성 시 사용될 주식 관련 값을 설정합니다.
+          </p>
+
+          <div className="admin-values-grid">
+            <div className="admin-value-field">
+              <label>Authorized Shares (수권주식수)</label>
+              <input
+                type="text"
+                value={authorizedShares}
+                onChange={(e) => setAuthorizedShares(e.target.value)}
+                placeholder="예: 10,000,000"
+                className="value-input"
+              />
+              {authorizedShares && (
+                <span className="value-preview">
+                  {parseInt(authorizedShares.replace(/,/g, '')).toLocaleString()} shares
+                </span>
+              )}
+            </div>
+
+            <div className="admin-value-field">
+              <label>Par Value (액면가)</label>
+              <input
+                type="text"
+                value={parValue}
+                onChange={(e) => setParValue(e.target.value)}
+                placeholder="예: 0.0001"
+                className="value-input"
+              />
+              {parValue && (
+                <span className="value-preview">
+                  ${parValue} per share
+                </span>
+              )}
+            </div>
+
+            <div className="admin-value-field">
+              <label>Fair Market Value (공정시장가치)</label>
+              <input
+                type="text"
+                value={fairMarketValue}
+                onChange={(e) => setFairMarketValue(e.target.value)}
+                placeholder="예: 0.10"
+                className="value-input"
+              />
+              {fairMarketValue && (
+                <span className="value-preview">
+                  ${fairMarketValue} per share
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '16px' }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleSaveValues}
+              disabled={isUpdating}
+            >
+              {isUpdating ? '저장 중...' : '값 저장'}
+            </button>
+            {(survey.adminValues?.authorizedShares || survey.adminValues?.parValue || survey.adminValues?.fairMarketValue) && (
+              <span className="saved-indicator" style={{ marginLeft: '12px' }}>
+                ✓ 저장됨
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Admin Dates - COIDate & SIGNDate */}

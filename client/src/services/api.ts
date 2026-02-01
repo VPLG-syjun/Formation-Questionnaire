@@ -1,4 +1,4 @@
-import { Survey, CreateSurveyDTO, SurveyStats, SurveyAnswer, AdminDates } from '../types/survey';
+import { Survey, CreateSurveyDTO, SurveyStats, SurveyAnswer, AdminDates, AdminValues } from '../types/survey';
 
 const API_BASE = '/api';
 
@@ -33,6 +33,7 @@ export interface UpdateSurveyData {
   adminNotes?: string;
   answers?: SurveyAnswer[];
   adminDates?: AdminDates;
+  adminValues?: AdminValues;
 }
 
 export async function updateSurvey(

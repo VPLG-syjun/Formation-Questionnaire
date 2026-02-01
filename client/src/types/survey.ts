@@ -59,6 +59,13 @@ export interface AdminDates {
   SIGNDate?: string;  // 서명 날짜
 }
 
+// 관리자가 설정하는 값 변수
+export interface AdminValues {
+  authorizedShares?: string;  // 수권주식수 (Authorized Shares)
+  parValue?: string;          // 액면가 (Par Value)
+  fairMarketValue?: string;   // 공정시장가치 (Fair Market Value)
+}
+
 // 설문 제출 데이터
 export interface Survey {
   id: string;
@@ -72,7 +79,8 @@ export interface Survey {
   totalPrice: number;
   status: 'pending' | 'approved' | 'rejected';
   adminNotes?: string;
-  adminDates?: AdminDates;  // 관리자가 설정하는 날짜들
+  adminDates?: AdminDates;    // 관리자가 설정하는 날짜들
+  adminValues?: AdminValues;  // 관리자가 설정하는 값들
   createdAt: string;
   reviewedAt?: string;
   documentGeneratedAt?: string;

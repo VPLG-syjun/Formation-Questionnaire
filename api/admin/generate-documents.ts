@@ -195,6 +195,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // 관리자가 설정한 값 추가 (Authorized Shares, Par Value, Fair Market Value)
+    if (survey.adminValues) {
+      if (survey.adminValues.authorizedShares) {
+        responses.push({ questionId: '__authorizedShares', value: survey.adminValues.authorizedShares });
+      }
+      if (survey.adminValues.parValue) {
+        responses.push({ questionId: '__parValue', value: survey.adminValues.parValue });
+      }
+      if (survey.adminValues.fairMarketValue) {
+        responses.push({ questionId: '__fairMarketValue', value: survey.adminValues.fairMarketValue });
+      }
+    }
+
     // 회사명 추출 (ZIP 파일명용)
     const companyNameResponse = responses.find(r => r.questionId === 'companyName' || r.questionId === 'companyName1');
     const companyNameValue = companyNameResponse?.value;

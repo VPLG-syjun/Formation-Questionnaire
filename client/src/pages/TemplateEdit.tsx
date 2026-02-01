@@ -19,6 +19,7 @@ interface VariableMapping {
   dataType: string;
   transformRule: string;
   required: boolean;
+  formula?: string;  // 계산된 값일 때 사용할 수식
 }
 
 interface RuleCondition {
@@ -130,6 +131,7 @@ export default function TemplateEdit() {
     dataType: 'text',
     transformRule: 'none',
     required: true,
+    formula: '',
   });
 
   useEffect(() => {
@@ -228,13 +230,25 @@ export default function TemplateEdit() {
       return;
     }
 
-    setVariables([...variables, { ...newVariable }]);
+    // 계산된 값인 경우 수식 필수
+    if (newVariable.questionId === '__calculated__' && !newVariable.formula?.trim()) {
+      alert('계산된 값을 선택한 경우 수식을 입력해주세요.');
+      return;
+    }
+
+    const variableToAdd = {
+      ...newVariable,
+      formula: newVariable.questionId === '__calculated__' ? newVariable.formula : undefined,
+    };
+
+    setVariables([...variables, variableToAdd]);
     setNewVariable({
       variableName: '',
       questionId: '__manual__',
       dataType: 'text',
       transformRule: 'none',
       required: true,
+      formula: '',
     });
     setShowAddModal(false);
   };
@@ -251,6 +265,11 @@ export default function TemplateEdit() {
     // dataType 변경 시 transformRule 초기화
     if (field === 'dataType') {
       updated[index].transformRule = 'none';
+    }
+
+    // questionId가 __calculated__가 아닌 것으로 변경되면 formula 초기화
+    if (field === 'questionId' && value !== '__calculated__') {
+      updated[index].formula = undefined;
     }
 
     setVariables(updated);
@@ -461,7 +480,7 @@ export default function TemplateEdit() {
               <thead>
                 <tr>
                   <th>변수명</th>
-                  <th>설문 질문</th>
+                  <th>설문 질문 / 수식</th>
                   <th>데이터 타입</th>
                   <th>변환 규칙</th>
                   <th style={{ width: '60px', textAlign: 'center' }}>필수</th>
@@ -495,6 +514,11 @@ export default function TemplateEdit() {
                           <option value="__COIDate">COIDate (법인설립일)</option>
                           <option value="__SIGNDate">SIGNDate (서명일)</option>
                         </optgroup>
+                        <optgroup label="관리자 설정 값">
+                          <option value="__authorizedShares">Authorized Shares (수권주식수)</option>
+                          <option value="__parValue">Par Value (액면가)</option>
+                          <option value="__fairMarketValue">Fair Market Value (공정시장가치)</option>
+                        </optgroup>
                         {questionSections.map(section => (
                           <optgroup key={section.id} label={section.title}>
                             {section.questions.map(q => (
@@ -505,6 +529,23 @@ export default function TemplateEdit() {
                           </optgroup>
                         ))}
                       </select>
+                      {variable.questionId === '__calculated__' && (
+                        <input
+                          type="text"
+                          value={variable.formula || ''}
+                          onChange={(e) => updateVariable(index, 'formula', e.target.value)}
+                          placeholder="예: {authorizedShares} * {parValue}"
+                          style={{
+                            width: '100%',
+                            marginTop: '8px',
+                            padding: '8px',
+                            fontSize: '0.85rem',
+                            fontFamily: 'monospace',
+                            border: '1px solid var(--color-gray-300)',
+                            borderRadius: '4px',
+                          }}
+                        />
+                      )}
                     </td>
                     <td>
                       <select
@@ -822,7 +863,7 @@ export default function TemplateEdit() {
                 <label>설문 질문</label>
                 <select
                   value={newVariable.questionId}
-                  onChange={(e) => setNewVariable({ ...newVariable, questionId: e.target.value })}
+                  onChange={(e) => setNewVariable({ ...newVariable, questionId: e.target.value, formula: '' })}
                 >
                   <optgroup label="특수 옵션">
                     <option value="__manual__">직접 입력</option>
@@ -831,6 +872,11 @@ export default function TemplateEdit() {
                   <optgroup label="관리자 설정 날짜">
                     <option value="__COIDate">COIDate (법인설립일)</option>
                     <option value="__SIGNDate">SIGNDate (서명일)</option>
+                  </optgroup>
+                  <optgroup label="관리자 설정 값">
+                    <option value="__authorizedShares">Authorized Shares (수권주식수)</option>
+                    <option value="__parValue">Par Value (액면가)</option>
+                    <option value="__fairMarketValue">Fair Market Value (공정시장가치)</option>
                   </optgroup>
                   {questionSections.map(section => (
                     <optgroup key={section.id} label={section.title}>
@@ -843,6 +889,22 @@ export default function TemplateEdit() {
                   ))}
                 </select>
               </div>
+
+              {newVariable.questionId === '__calculated__' && (
+                <div className="form-group">
+                  <label>수식 *</label>
+                  <input
+                    type="text"
+                    placeholder="예: {authorizedShares} * {parValue}"
+                    value={newVariable.formula}
+                    onChange={(e) => setNewVariable({ ...newVariable, formula: e.target.value })}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                  <small style={{ color: 'var(--color-gray-500)', display: 'block', marginTop: '4px' }}>
+                    변수는 {'{'}변수명{'}'} 형식으로 입력합니다. 사용 가능한 연산자: +, -, *, /, (, )
+                  </small>
+                </div>
+              )}
 
               <div className="form-row">
                 <div className="form-group" style={{ flex: 1 }}>

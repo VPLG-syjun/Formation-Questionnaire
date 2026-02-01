@@ -21,6 +21,7 @@ export interface VariableMapping {
   transformRule: string;
   required: boolean;
   defaultValue?: string;
+  formula?: string;        // 계산된 값일 때 사용할 수식 (예: "{authorizedShares} * {parValue}")
 }
 
 export interface TransformOptions {
@@ -518,6 +519,109 @@ export function generateDocumentNumber(prefix: string = 'DOC', includeDate: bool
 }
 
 // ============================================
+// 수식 평가 유틸리티
+// ============================================
+
+/**
+ * 수식에서 변수를 값으로 치환하고 계산
+ * @param formula - 수식 문자열 (예: "{authorizedShares} * {parValue}")
+ * @param variables - 현재까지 변환된 변수 객체
+ * @returns 계산 결과 또는 오류 시 빈 문자열
+ *
+ * 지원 연산자: +, -, *, /, (, )
+ * 변수 형식: {변수명}
+ */
+export function evaluateFormula(
+  formula: string,
+  variables: Record<string, string>
+): string {
+  if (!formula || !formula.trim()) return '';
+
+  try {
+    // 변수 치환: {변수명} → 숫자값
+    let expression = formula;
+    const variablePattern = /\{([^}]+)\}/g;
+    let match;
+
+    while ((match = variablePattern.exec(formula)) !== null) {
+      const varName = match[1];
+      const value = variables[varName];
+
+      if (value === undefined || value === '') {
+        // 변수가 없거나 빈 값이면 0으로 처리
+        expression = expression.replace(match[0], '0');
+      } else {
+        // 콤마 제거하고 숫자로 변환
+        const numValue = parseFloat(value.replace(/[$,]/g, ''));
+        if (isNaN(numValue)) {
+          expression = expression.replace(match[0], '0');
+        } else {
+          expression = expression.replace(match[0], numValue.toString());
+        }
+      }
+    }
+
+    // 허용된 문자만 있는지 확인 (보안)
+    if (!/^[\d\s+\-*/().]+$/.test(expression)) {
+      console.warn('Invalid formula expression:', expression);
+      return '';
+    }
+
+    // 수식 계산 (안전한 eval 대체)
+    const result = evaluateMathExpression(expression);
+
+    if (isNaN(result) || !isFinite(result)) {
+      return '';
+    }
+
+    return result.toString();
+  } catch (error) {
+    console.error('Formula evaluation error:', error);
+    return '';
+  }
+}
+
+/**
+ * 안전한 수학 표현식 계산 (eval 대신 사용)
+ */
+function evaluateMathExpression(expression: string): number {
+  // 공백 제거
+  expression = expression.replace(/\s+/g, '');
+
+  // 재귀적으로 괄호 먼저 처리
+  while (expression.includes('(')) {
+    expression = expression.replace(/\(([^()]+)\)/g, (_, inner) => {
+      return evaluateMathExpression(inner).toString();
+    });
+  }
+
+  // 덧셈/뺄셈 처리 (낮은 우선순위)
+  // 음수 처리를 위해 시작 부분의 마이너스는 제외
+  const addSubMatch = expression.match(/(.+?)([+\-])(?!$)(.+)/);
+  if (addSubMatch) {
+    const [, left, operator, right] = addSubMatch;
+    // 연산자 뒤에 바로 숫자가 오는지 확인 (예: 5*-3 방지)
+    if (!/[+\-*/]$/.test(left)) {
+      const leftVal = evaluateMathExpression(left);
+      const rightVal = evaluateMathExpression(right);
+      return operator === '+' ? leftVal + rightVal : leftVal - rightVal;
+    }
+  }
+
+  // 곱셈/나눗셈 처리 (높은 우선순위)
+  const mulDivMatch = expression.match(/(.+?)([*/])(.+)/);
+  if (mulDivMatch) {
+    const [, left, operator, right] = mulDivMatch;
+    const leftVal = evaluateMathExpression(left);
+    const rightVal = evaluateMathExpression(right);
+    return operator === '*' ? leftVal * rightVal : leftVal / rightVal;
+  }
+
+  // 숫자만 남은 경우
+  return parseFloat(expression) || 0;
+}
+
+// ============================================
 // 메인 변환 함수
 // ============================================
 
@@ -579,15 +683,44 @@ export function transformSurveyToVariables(
     result['SIGNDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
   }
 
-  // 4. 매핑된 변수 처리
+  // 4. 관리자 설정 값 (Authorized Shares, Par Value, Fair Market Value) 처리
+  const authSharesResponse = responses.find(r => r.questionId === '__authorizedShares');
+  if (authSharesResponse?.value) {
+    const authSharesValue = Array.isArray(authSharesResponse.value) ? authSharesResponse.value[0] : authSharesResponse.value;
+    const numValue = parseFloat(authSharesValue.replace(/,/g, ''));
+    result['authorizedShares'] = formatNumberWithComma(numValue);
+    result['authorizedSharesRaw'] = numValue.toString();
+    result['authorizedSharesEnglish'] = numberToEnglish(numValue);
+  }
+
+  const parValueResponse = responses.find(r => r.questionId === '__parValue');
+  if (parValueResponse?.value) {
+    const parVal = Array.isArray(parValueResponse.value) ? parValueResponse.value[0] : parValueResponse.value;
+    result['parValue'] = parVal;
+    result['parValueDollar'] = '$' + parVal;
+  }
+
+  const fmvResponse = responses.find(r => r.questionId === '__fairMarketValue');
+  if (fmvResponse?.value) {
+    const fmvVal = Array.isArray(fmvResponse.value) ? fmvResponse.value[0] : fmvResponse.value;
+    result['fairMarketValue'] = fmvVal;
+    result['fairMarketValueDollar'] = '$' + fmvVal;
+  }
+
+  // 5. 매핑된 변수 처리 (계산 변수 제외)
   for (const mapping of variableMappings) {
     const variableKey = mapping.variableName;
 
-    // 직접 입력 또는 계산된 값인 경우 건너뛰기 (나중에 수동 입력)
-    if (mapping.questionId === '__manual__' || mapping.questionId === '__calculated__') {
+    // 직접 입력인 경우 건너뛰기
+    if (mapping.questionId === '__manual__') {
       if (mapping.defaultValue) {
         result[variableKey] = mapping.defaultValue;
       }
+      continue;
+    }
+
+    // 계산된 값인 경우 나중에 처리
+    if (mapping.questionId === '__calculated__') {
       continue;
     }
 
@@ -673,6 +806,70 @@ export function transformSurveyToVariables(
     }
 
     result[variableKey] = transformedValue;
+  }
+
+  // 6. 계산 변수 처리 (다른 변수들이 모두 처리된 후)
+  for (const mapping of variableMappings) {
+    if (mapping.questionId !== '__calculated__') continue;
+    if (!mapping.formula) continue;
+
+    const variableKey = mapping.variableName;
+
+    // 수식 평가
+    const calculatedValue = evaluateFormula(mapping.formula, result);
+
+    if (calculatedValue) {
+      // 데이터 타입에 따른 변환 적용
+      let transformedValue: string;
+
+      switch (mapping.dataType) {
+        case 'number':
+          switch (mapping.transformRule) {
+            case 'comma':
+              transformedValue = formatNumberWithComma(calculatedValue);
+              break;
+            case 'number_english':
+              transformedValue = numberToEnglish(calculatedValue);
+              break;
+            case 'ordinal_english':
+              transformedValue = numberToOrdinal(calculatedValue);
+              break;
+            default:
+              transformedValue = calculatedValue;
+          }
+          break;
+
+        case 'currency':
+          switch (mapping.transformRule) {
+            case 'number_english':
+              transformedValue = numberToEnglishCurrency(calculatedValue);
+              break;
+            case 'number_korean':
+              transformedValue = numberToKoreanCurrency(calculatedValue);
+              break;
+            case 'comma_dollar':
+              transformedValue = '$' + formatNumberWithComma(calculatedValue);
+              break;
+            case 'comma_dollar_cents':
+              const numVal = parseFloat(calculatedValue);
+              transformedValue = '$' + numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              break;
+            case 'comma_won':
+              transformedValue = formatNumberWithComma(calculatedValue) + '원';
+              break;
+            default:
+              transformedValue = '$' + formatNumberWithComma(calculatedValue);
+          }
+          break;
+
+        default:
+          transformedValue = calculatedValue;
+      }
+
+      result[variableKey] = transformedValue;
+    } else if (mapping.defaultValue) {
+      result[variableKey] = mapping.defaultValue;
+    }
   }
 
   return result;
@@ -1054,6 +1251,9 @@ export default {
   transformSurveyToVariables,
   validateVariables,
   generatePreviewText,
+
+  // 수식 평가
+  evaluateFormula,
 
   // 템플릿 선택
   selectTemplates,

@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const survey = JSON.parse(data);
-      const { status, adminNotes, answers, adminDates } = req.body;
+      const { status, adminNotes, answers, adminDates, adminValues } = req.body;
 
       if (status) {
         survey.status = status;
@@ -57,6 +57,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // 관리자 날짜 설정 업데이트
       if (adminDates !== undefined) {
         survey.adminDates = { ...survey.adminDates, ...adminDates };
+      }
+      // 관리자 값 설정 업데이트
+      if (adminValues !== undefined) {
+        survey.adminValues = { ...survey.adminValues, ...adminValues };
       }
 
       await client.hSet('surveys', id, JSON.stringify(survey));
