@@ -1,9 +1,57 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
+import PizZip from 'pizzip';
 
 const TEMPLATES_KEY = 'templates';
 const TEMPLATE_VARIABLES_KEY = 'template_variables';
+const TEMPLATE_FILES_KEY = 'template_files';
+
+/**
+ * DOCX 템플릿에서 {변수명} 형식의 변수를 추출
+ */
+function extractVariablesFromDocx(buffer: Buffer): string[] {
+  try {
+    const zip = new PizZip(buffer);
+    const variables = new Set<string>();
+
+    const xmlFiles = [
+      'word/document.xml',
+      'word/header1.xml',
+      'word/header2.xml',
+      'word/header3.xml',
+      'word/footer1.xml',
+      'word/footer2.xml',
+      'word/footer3.xml',
+    ];
+
+    for (const xmlFile of xmlFiles) {
+      try {
+        const file = zip.file(xmlFile);
+        if (file) {
+          const content = file.asText();
+          const textContent = content.replace(/<[^>]+>/g, '');
+          const matches = textContent.match(/\{([^}]+)\}/g);
+          if (matches) {
+            for (const match of matches) {
+              const varName = match.slice(1, -1).trim();
+              if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(varName)) {
+                variables.add(varName);
+              }
+            }
+          }
+        }
+      } catch {
+        // 파일이 없거나 읽기 실패 시 무시
+      }
+    }
+
+    return Array.from(variables).sort();
+  } catch (error) {
+    console.error('Error extracting variables:', error);
+    return [];
+  }
+}
 
 async function getRedisClient() {
   const client = createClient({ url: process.env.REDIS_URL });
@@ -25,7 +73,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     client = await getRedisClient();
 
     if (req.method === 'POST') {
-      const { templateId, variables } = req.body;
+      const { templateId, variables, action } = req.body;
+
+      // 변수 스캔 모드
+      if (action === 'scan' && templateId) {
+        const fileData = await client.hGet(TEMPLATE_FILES_KEY, templateId);
+        if (!fileData) {
+          return res.status(404).json({ error: 'Template file not found' });
+        }
+
+        const templateBuffer = Buffer.from(fileData, 'base64');
+        const scannedVariables = extractVariablesFromDocx(templateBuffer);
+
+        return res.status(200).json({
+          templateId,
+          variables: scannedVariables,
+          count: scannedVariables.length,
+        });
+      }
 
       // 일괄 저장 모드 (variables 배열이 있는 경우)
       if (templateId && Array.isArray(variables)) {

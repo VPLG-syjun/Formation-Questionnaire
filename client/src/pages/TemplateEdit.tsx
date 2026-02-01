@@ -178,10 +178,10 @@ export default function TemplateEdit() {
 
     setScanning(true);
     try {
-      const response = await fetch('/api/admin/templates/scan-variables', {
+      const response = await fetch('/api/templates/variables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: id }),
+        body: JSON.stringify({ templateId: id, action: 'scan' }),
       });
 
       if (!response.ok) {

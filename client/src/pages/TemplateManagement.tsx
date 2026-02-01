@@ -199,10 +199,10 @@ export default function TemplateManagement() {
   const handleScanVariables = async (template: Template) => {
     setScanning(template.id);
     try {
-      const response = await fetch('/api/admin/templates/scan-variables', {
+      const response = await fetch('/api/templates/variables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: template.id }),
+        body: JSON.stringify({ templateId: template.id, action: 'scan' }),
       });
 
       if (!response.ok) {
