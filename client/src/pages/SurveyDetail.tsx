@@ -53,7 +53,8 @@ export default function SurveyDetail() {
       const data = await fetchSurvey(id);
       setSurvey(data);
       setAdminNotes(data.adminNotes || '');
-      setEditedAnswers(data.answers || []);
+      // 중복 제거된 응답으로 설정
+      setEditedAnswers(getUniqueAnswers(data.answers || []));
     } catch (err) {
       setError(err instanceof Error ? err.message : '설문을 불러오는데 실패했습니다.');
     } finally {
@@ -86,7 +87,7 @@ export default function SurveyDetail() {
   // 응답 편집 시작
   const handleStartEditAnswers = () => {
     if (survey) {
-      setEditedAnswers([...survey.answers]);
+      setEditedAnswers(getUniqueAnswers(survey.answers || []));
       setEditingAnswers(true);
     }
   };
@@ -94,7 +95,7 @@ export default function SurveyDetail() {
   // 응답 편집 취소
   const handleCancelEditAnswers = () => {
     if (survey) {
-      setEditedAnswers([...survey.answers]);
+      setEditedAnswers(getUniqueAnswers(survey.answers || []));
     }
     setEditingAnswers(false);
   };
@@ -187,6 +188,15 @@ export default function SurveyDetail() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // 중복 제거된 응답 목록 반환 (동일 questionId는 마지막 값만 유지)
+  const getUniqueAnswers = (answers: SurveyAnswer[]): SurveyAnswer[] => {
+    const answersMap = new Map<string, SurveyAnswer>();
+    for (const answer of answers) {
+      answersMap.set(answer.questionId, answer);
+    }
+    return Array.from(answersMap.values());
   };
 
   const formatDate = (dateString?: string) => {
@@ -356,8 +366,8 @@ export default function SurveyDetail() {
               ))}
             </div>
           ) : (
-            // 보기 모드
-            survey.answers?.map((answer, index) => (
+            // 보기 모드 (중복 제거된 응답만 표시)
+            getUniqueAnswers(survey.answers || []).map((answer, index) => (
               <div key={index} className="question-card">
                 <h4>{answer.questionId}</h4>
                 <p style={{ marginTop: '10px', color: '#374151' }}>
