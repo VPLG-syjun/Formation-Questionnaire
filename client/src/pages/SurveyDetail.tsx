@@ -19,11 +19,14 @@ export default function SurveyDetail() {
     loadSurvey();
   }, [id]);
 
-  const loadSurvey = async () => {
+  const loadSurvey = async (showLoading = true) => {
     if (!id) return;
 
     try {
-      setLoading(true);
+      // 초기 로드 시에만 로딩 표시 (모달이 열려있을 때는 표시하지 않음)
+      if (showLoading && !survey) {
+        setLoading(true);
+      }
       const data = await fetchSurvey(id);
       setSurvey(data);
       setAdminNotes(data.adminNotes || '');
@@ -52,7 +55,8 @@ export default function SurveyDetail() {
   };
 
   const handleDocumentGenerated = () => {
-    loadSurvey();
+    // 모달이 열려있을 때는 로딩 표시 없이 데이터만 갱신
+    loadSurvey(false);
     setMessage({ type: 'success', text: '문서가 성공적으로 생성되었습니다.' });
   };
 
