@@ -1,15 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Survey, SurveyStats } from '../types/survey';
-import { fetchSurveys, fetchStats, deleteSurvey } from '../services/api';
+import { Survey } from '../types/survey';
+import { fetchSurveys, deleteSurvey } from '../services/api';
 
 export default function AdminDashboard() {
-  const [surveys, setSurveys] = useState<Survey[]>([]);
-  const [stats, setStats] = useState<SurveyStats | null>(null);
+  const [allSurveys, setAllSurveys] = useState<Survey[]>([]);
   const [filter, setFilter] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // 통계를 설문 데이터에서 직접 계산
+  const stats = useMemo(() => {
+    return {
+      total: allSurveys.length,
+      pending: allSurveys.filter(s => s.status === 'pending').length,
+      approved: allSurveys.filter(s => s.status === 'approved').length,
+      rejected: allSurveys.filter(s => s.status === 'rejected').length,
+      totalRevenue: allSurveys
+        .filter(s => s.status === 'approved')
+        .reduce((sum, s) => sum + (s.totalPrice || 0), 0),
+    };
+  }, [allSurveys]);
+
+  // 필터링된 설문 목록
+  const surveys = useMemo(() => {
+    if (!filter) return allSurveys;
+    return allSurveys.filter(s => s.status === filter);
+  }, [allSurveys, filter]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('adminAuth');
@@ -19,12 +37,8 @@ export default function AdminDashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [surveysData, statsData] = await Promise.all([
-        fetchSurveys(filter || undefined),
-        fetchStats(),
-      ]);
-      setSurveys(surveysData);
-      setStats(statsData);
+      const surveysData = await fetchSurveys();
+      setAllSurveys(surveysData);
     } catch (err) {
       setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.');
     } finally {
@@ -34,7 +48,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
-  }, [filter]);
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
@@ -96,7 +110,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      {stats && (
+      {allSurveys.length > 0 && (
         <div className="stats-grid">
           <div className="stat-card primary">
             <div className="stat-label">전체 설문</div>
