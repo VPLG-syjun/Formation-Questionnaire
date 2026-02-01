@@ -55,6 +55,7 @@ const OPERATORS = [
 
 const DATA_TYPES = [
   { value: 'text', label: '텍스트' },
+  { value: 'list', label: '리스트 (배열)' },
   { value: 'date', label: '날짜' },
   { value: 'number', label: '숫자' },
   { value: 'currency', label: '금액' },
@@ -69,6 +70,16 @@ const TRANSFORM_RULES: Record<string, { value: string; label: string }[]> = {
     { value: 'lowercase', label: 'lowercase' },
     { value: 'capitalize', label: 'Capitalize' },
     { value: 'title', label: 'Title Case' },
+    { value: 'list_and', label: 'List: A, B, and C' },
+    { value: 'list_or', label: 'List: A, B, or C' },
+    { value: 'list_comma', label: 'List: A, B, C' },
+  ],
+  list: [
+    { value: 'list_and', label: 'A, B, and C (Recommended)' },
+    { value: 'list_or', label: 'A, B, or C' },
+    { value: 'list_comma', label: 'A, B, C' },
+    { value: 'list_newline', label: '줄바꿈으로 구분' },
+    { value: 'none', label: 'None (기본: A, B, and C)' },
   ],
   date: [
     { value: 'MMMM D, YYYY', label: 'January 1, 2026 (Recommended)' },

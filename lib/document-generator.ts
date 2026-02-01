@@ -17,7 +17,7 @@ export interface VariableMapping {
   id?: string;
   variableName: string;
   questionId: string;      // '__manual__' | '__calculated__' | 실제 질문 ID
-  dataType: 'text' | 'date' | 'number' | 'currency' | 'email' | 'phone';
+  dataType: 'text' | 'list' | 'date' | 'number' | 'currency' | 'email' | 'phone';
   transformRule: string;
   required: boolean;
   defaultValue?: string;
@@ -496,6 +496,107 @@ export function transformText(text: string | undefined, rule: string): string {
 }
 
 // ============================================
+// 리스트 포맷팅 유틸리티
+// ============================================
+
+/**
+ * 배열을 "A and B" 또는 "A, B, and C" 형식으로 변환
+ * @example formatListAnd(['John']) → 'John'
+ * @example formatListAnd(['John', 'Jane']) → 'John and Jane'
+ * @example formatListAnd(['John', 'Jane', 'Bob']) → 'John, Jane, and Bob'
+ */
+export function formatListAnd(items: string[]): string {
+  if (!items || items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+/**
+ * 배열을 "A or B" 또는 "A, B, or C" 형식으로 변환
+ * @example formatListOr(['John', 'Jane', 'Bob']) → 'John, Jane, or Bob'
+ */
+export function formatListOr(items: string[]): string {
+  if (!items || items.length === 0) return '';
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} or ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, or ${items[items.length - 1]}`;
+}
+
+/**
+ * 배열을 콤마로 구분된 문자열로 변환
+ * @example formatListComma(['John', 'Jane', 'Bob']) → 'John, Jane, Bob'
+ */
+export function formatListComma(items: string[]): string {
+  if (!items || items.length === 0) return '';
+  return items.join(', ');
+}
+
+/**
+ * 배열을 줄바꿈으로 구분된 문자열로 변환
+ * @example formatListNewline(['John', 'Jane']) → 'John\nJane'
+ */
+export function formatListNewline(items: string[]): string {
+  if (!items || items.length === 0) return '';
+  return items.join('\n');
+}
+
+/**
+ * 배열에서 헬퍼 변수들을 생성
+ * @param baseName - 기본 변수명
+ * @param items - 배열 값
+ * @returns 헬퍼 변수 객체
+ *
+ * 생성되는 변수:
+ * - {baseName}Count: 항목 수
+ * - {baseName}Formatted: "A, B, and C" 형식
+ * - {baseName}List: "A, B, C" 형식
+ * - {baseName}First: 첫 번째 항목
+ * - {baseName}Last: 마지막 항목
+ * - hasMultiple{BaseName}: 2개 이상인지 여부 (문자열 "true"/"false")
+ * - hasSingle{BaseName}: 1개인지 여부
+ * - {baseName}1, {baseName}2, ...: 개별 항목 접근
+ */
+export function generateArrayHelperVariables(
+  baseName: string,
+  items: string[]
+): Record<string, string | Array<{ value: string; isFirst: boolean; isLast: boolean; index: number }>> {
+  const result: Record<string, string | Array<{ value: string; isFirst: boolean; isLast: boolean; index: number }>> = {};
+  const capitalizedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+
+  // 기본 헬퍼 변수
+  result[`${baseName}Count`] = items.length.toString();
+  result[`${baseName}Formatted`] = formatListAnd(items);
+  result[`${baseName}List`] = formatListComma(items);
+  result[`${baseName}OrList`] = formatListOr(items);
+
+  if (items.length > 0) {
+    result[`${baseName}First`] = items[0];
+    result[`${baseName}Last`] = items[items.length - 1];
+  }
+
+  // 조건부 플래그 (docxtemplater에서 사용)
+  result[`hasMultiple${capitalizedName}`] = items.length >= 2 ? 'true' : '';
+  result[`hasSingle${capitalizedName}`] = items.length === 1 ? 'true' : '';
+  result[`hasNo${capitalizedName}`] = items.length === 0 ? 'true' : '';
+
+  // 개별 항목 접근 (1-indexed)
+  items.forEach((item, index) => {
+    result[`${baseName}${index + 1}`] = item;
+  });
+
+  // 반복문용 배열 (docxtemplater loop)
+  result[baseName] = items.map((item, index) => ({
+    value: item,
+    isFirst: index === 0,
+    isLast: index === items.length - 1,
+    index: index + 1,
+  }));
+
+  return result;
+}
+
+// ============================================
 // 문서번호 생성 유틸리티
 // ============================================
 
@@ -726,23 +827,58 @@ export function transformSurveyToVariables(
 
     // 답변 찾기
     const response = responses.find(r => r.questionId === mapping.questionId);
-    let value = response?.value;
-
-    // 배열인 경우 콤마로 합치기
-    if (Array.isArray(value)) {
-      value = value.join(', ');
-    }
+    const rawValue = response?.value;
 
     // 값이 없으면 기본값 사용
-    if (!value && mapping.defaultValue) {
-      value = mapping.defaultValue;
+    if (!rawValue && mapping.defaultValue) {
+      result[variableKey] = mapping.defaultValue;
+      continue;
     }
 
     // 값이 없으면 빈 문자열
-    if (!value) {
+    if (!rawValue) {
       result[variableKey] = '';
       continue;
     }
+
+    // 배열인 경우 헬퍼 변수 생성 및 리스트 포맷팅 적용
+    if (Array.isArray(rawValue)) {
+      // 헬퍼 변수 생성 (variableNameCount, variableNameFormatted 등)
+      const helpers = generateArrayHelperVariables(variableKey, rawValue);
+      for (const [key, val] of Object.entries(helpers)) {
+        if (typeof val === 'string') {
+          result[key] = val;
+        } else {
+          // 배열은 docxtemplater용으로 별도 저장 (나중에 처리)
+          (result as Record<string, unknown>)[key] = val;
+        }
+      }
+
+      // 변환 규칙에 따른 기본값 설정
+      let transformedValue: string;
+      switch (mapping.transformRule) {
+        case 'list_and':
+          transformedValue = formatListAnd(rawValue);
+          break;
+        case 'list_or':
+          transformedValue = formatListOr(rawValue);
+          break;
+        case 'list_comma':
+          transformedValue = formatListComma(rawValue);
+          break;
+        case 'list_newline':
+          transformedValue = formatListNewline(rawValue);
+          break;
+        default:
+          // 기본값: "A, B, and C" 형식
+          transformedValue = formatListAnd(rawValue);
+      }
+      result[variableKey] = transformedValue;
+      continue;
+    }
+
+    // 단일 값인 경우
+    const value = rawValue;
 
     // 데이터 타입에 따른 변환
     let transformedValue: string;
@@ -1279,6 +1415,13 @@ export default {
   // 문자열 유틸리티
   formatPhone,
   transformText,
+
+  // 리스트 포맷팅
+  formatListAnd,
+  formatListOr,
+  formatListComma,
+  formatListNewline,
+  generateArrayHelperVariables,
 
   // 문서번호
   generateDocumentNumber,
