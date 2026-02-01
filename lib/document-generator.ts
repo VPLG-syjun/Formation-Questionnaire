@@ -29,6 +29,46 @@ export interface TransformOptions {
   timezone?: string;
 }
 
+// 템플릿 선택 관련 타입
+export interface RuleCondition {
+  questionId: string;
+  operator: '==' | '!=' | 'contains' | 'not_contains' | 'in' | '>' | '>=' | '<' | '<=';
+  value: string;
+}
+
+export interface SelectionRule {
+  id?: string;
+  conditions: RuleCondition[];
+  priority: number;
+  isAlwaysInclude: boolean;
+  isManualOnly: boolean;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  displayName: string;
+  category: string;
+  rules?: SelectionRule[];
+  variables?: VariableMapping[];
+  isActive: boolean;
+}
+
+export interface TemplateSelection {
+  required: Template[];   // 필수 템플릿 (규칙 100% 충족 또는 "항상 사용")
+  suggested: Template[];  // 추천 템플릿 (규칙 부분 충족)
+  optional: Template[];   // 선택적 템플릿 (매뉴얼 선택용)
+}
+
+export interface RuleEvaluationResult {
+  templateId: string;
+  score: number;           // 0.0 ~ 1.0
+  matchedRules: number;
+  totalRules: number;
+  isAlwaysInclude: boolean;
+  isManualOnly: boolean;
+}
+
 // ============================================
 // 숫자 → 한글 변환 유틸리티
 // ============================================
@@ -579,6 +619,279 @@ export function validateVariables(
 }
 
 // ============================================
+// 템플릿 선택 로직
+// ============================================
+
+/**
+ * 단일 조건 평가
+ * @param condition - 평가할 조건
+ * @param responses - 설문 답변 배열
+ * @returns 조건 충족 여부
+ */
+export function evaluateCondition(
+  condition: RuleCondition,
+  responses: SurveyResponse[]
+): boolean {
+  const response = responses.find(r => r.questionId === condition.questionId);
+  const actualValue = response?.value;
+
+  // 답변이 없는 경우
+  if (actualValue === undefined || actualValue === null) {
+    // != 연산자는 값이 없어도 true
+    if (condition.operator === '!=') return true;
+    return false;
+  }
+
+  // 배열 값을 문자열로 변환
+  const valueStr = Array.isArray(actualValue) ? actualValue.join(',') : String(actualValue);
+  const conditionValue = condition.value;
+
+  switch (condition.operator) {
+    case '==':
+      return valueStr.toLowerCase() === conditionValue.toLowerCase();
+
+    case '!=':
+      return valueStr.toLowerCase() !== conditionValue.toLowerCase();
+
+    case 'contains':
+      return valueStr.toLowerCase().includes(conditionValue.toLowerCase());
+
+    case 'not_contains':
+      return !valueStr.toLowerCase().includes(conditionValue.toLowerCase());
+
+    case 'in':
+      // conditionValue가 콤마로 구분된 값 목록인 경우
+      const allowedValues = conditionValue.split(',').map(v => v.trim().toLowerCase());
+      return allowedValues.includes(valueStr.toLowerCase());
+
+    case '>':
+      const numVal1 = parseFloat(valueStr);
+      const numCond1 = parseFloat(conditionValue);
+      return !isNaN(numVal1) && !isNaN(numCond1) && numVal1 > numCond1;
+
+    case '>=':
+      const numVal2 = parseFloat(valueStr);
+      const numCond2 = parseFloat(conditionValue);
+      return !isNaN(numVal2) && !isNaN(numCond2) && numVal2 >= numCond2;
+
+    case '<':
+      const numVal3 = parseFloat(valueStr);
+      const numCond3 = parseFloat(conditionValue);
+      return !isNaN(numVal3) && !isNaN(numCond3) && numVal3 < numCond3;
+
+    case '<=':
+      const numVal4 = parseFloat(valueStr);
+      const numCond4 = parseFloat(conditionValue);
+      return !isNaN(numVal4) && !isNaN(numCond4) && numVal4 <= numCond4;
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * 템플릿의 규칙들을 평가하고 점수 반환
+ * @param template - 평가할 템플릿
+ * @param responses - 설문 답변 배열
+ * @returns 평가 결과 (0.0 ~ 1.0 점수 포함)
+ */
+export function evaluateRules(
+  template: Template,
+  responses: SurveyResponse[]
+): RuleEvaluationResult {
+  const rules = template.rules || [];
+
+  // 규칙이 없는 경우
+  if (rules.length === 0) {
+    return {
+      templateId: template.id,
+      score: 0,
+      matchedRules: 0,
+      totalRules: 0,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    };
+  }
+
+  // "항상 사용" 규칙 확인
+  const alwaysIncludeRule = rules.find(r => r.isAlwaysInclude);
+  if (alwaysIncludeRule) {
+    return {
+      templateId: template.id,
+      score: 1.0,
+      matchedRules: rules.length,
+      totalRules: rules.length,
+      isAlwaysInclude: true,
+      isManualOnly: false,
+    };
+  }
+
+  // "수동 선택만" 규칙 확인
+  const manualOnlyRule = rules.find(r => r.isManualOnly);
+  if (manualOnlyRule) {
+    return {
+      templateId: template.id,
+      score: 0,
+      matchedRules: 0,
+      totalRules: rules.length,
+      isAlwaysInclude: false,
+      isManualOnly: true,
+    };
+  }
+
+  // 일반 규칙 평가 - 각 규칙의 모든 조건이 AND 관계
+  let matchedRules = 0;
+  let highestPriorityMatch = false;
+
+  // 우선순위 정렬 (낮은 숫자 = 높은 우선순위)
+  const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
+
+  for (const rule of sortedRules) {
+    // 규칙에 조건이 없으면 건너뛰기
+    if (!rule.conditions || rule.conditions.length === 0) continue;
+
+    // 모든 조건이 충족되어야 규칙 매치 (AND 관계)
+    const allConditionsMet = rule.conditions.every(condition =>
+      evaluateCondition(condition, responses)
+    );
+
+    if (allConditionsMet) {
+      matchedRules++;
+      // 첫 번째 매칭 규칙이 가장 높은 우선순위
+      if (!highestPriorityMatch) {
+        highestPriorityMatch = true;
+      }
+    }
+  }
+
+  // 조건이 있는 규칙만 카운트
+  const rulesWithConditions = rules.filter(r => r.conditions && r.conditions.length > 0);
+  const totalRules = rulesWithConditions.length;
+
+  // 점수 계산: 매칭된 규칙 비율
+  const score = totalRules > 0 ? matchedRules / totalRules : 0;
+
+  return {
+    templateId: template.id,
+    score,
+    matchedRules,
+    totalRules,
+    isAlwaysInclude: false,
+    isManualOnly: false,
+  };
+}
+
+/**
+ * 설문 답변을 기반으로 필요한 템플릿 자동 선택
+ *
+ * @param responses - 설문 답변 배열
+ * @param templates - 전체 템플릿 배열
+ * @returns 분류된 템플릿 목록 (required, suggested, optional)
+ *
+ * 분류 기준:
+ * - required: 규칙 100% 충족 (score === 1.0) 또는 "항상 사용" 설정
+ * - suggested: 규칙 50% 이상 충족 (score > 0.5)
+ * - optional: 그 외 (수동 선택용 포함)
+ */
+export function selectTemplates(
+  responses: SurveyResponse[],
+  templates: Template[]
+): TemplateSelection {
+  const required: Template[] = [];
+  const suggested: Template[] = [];
+  const optional: Template[] = [];
+
+  // 활성화된 템플릿만 처리
+  const activeTemplates = templates.filter(t => t.isActive);
+
+  for (const template of activeTemplates) {
+    const evaluation = evaluateRules(template, responses);
+
+    // 항상 사용 → required
+    if (evaluation.isAlwaysInclude) {
+      required.push(template);
+      continue;
+    }
+
+    // 수동 선택만 → optional
+    if (evaluation.isManualOnly) {
+      optional.push(template);
+      continue;
+    }
+
+    // 규칙이 없는 템플릿 → optional
+    if (evaluation.totalRules === 0) {
+      optional.push(template);
+      continue;
+    }
+
+    // 점수 기반 분류
+    if (evaluation.score >= 1.0) {
+      required.push(template);
+    } else if (evaluation.score > 0.5) {
+      suggested.push(template);
+    } else {
+      optional.push(template);
+    }
+  }
+
+  // 각 카테고리 내에서 이름순 정렬
+  const sortByName = (a: Template, b: Template) =>
+    (a.displayName || a.name).localeCompare(b.displayName || b.name);
+
+  return {
+    required: required.sort(sortByName),
+    suggested: suggested.sort(sortByName),
+    optional: optional.sort(sortByName),
+  };
+}
+
+/**
+ * 특정 템플릿의 규칙 충족 상세 정보 반환
+ * (디버깅 및 UI 표시용)
+ */
+export function getTemplateEvaluationDetails(
+  template: Template,
+  responses: SurveyResponse[]
+): {
+  evaluation: RuleEvaluationResult;
+  conditionDetails: Array<{
+    ruleIndex: number;
+    condition: RuleCondition;
+    isMet: boolean;
+    actualValue: string | undefined;
+  }>;
+} {
+  const evaluation = evaluateRules(template, responses);
+  const conditionDetails: Array<{
+    ruleIndex: number;
+    condition: RuleCondition;
+    isMet: boolean;
+    actualValue: string | undefined;
+  }> = [];
+
+  const rules = template.rules || [];
+  rules.forEach((rule, ruleIndex) => {
+    if (!rule.conditions) return;
+
+    rule.conditions.forEach(condition => {
+      const response = responses.find(r => r.questionId === condition.questionId);
+      const actualValue = response?.value;
+      const isMet = evaluateCondition(condition, responses);
+
+      conditionDetails.push({
+        ruleIndex,
+        condition,
+        isMet,
+        actualValue: Array.isArray(actualValue) ? actualValue.join(',') : actualValue,
+      });
+    });
+  });
+
+  return { evaluation, conditionDetails };
+}
+
+// ============================================
 // 변수 미리보기 생성
 // ============================================
 
@@ -608,6 +921,12 @@ export default {
   transformSurveyToVariables,
   validateVariables,
   generatePreviewText,
+
+  // 템플릿 선택
+  selectTemplates,
+  evaluateCondition,
+  evaluateRules,
+  getTemplateEvaluationDetails,
 
   // 날짜 유틸리티
   formatDate,

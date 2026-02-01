@@ -15,8 +15,14 @@ import {
   generateDocumentNumber,
   transformSurveyToVariables,
   validateVariables,
+  evaluateCondition,
+  evaluateRules,
+  selectTemplates,
   SurveyResponse,
   VariableMapping,
+  RuleCondition,
+  SelectionRule,
+  Template,
 } from './document-generator.js';
 
 // ============================================
@@ -321,6 +327,298 @@ test('validateVariables: 필수값 누락', () => {
   const result = validateVariables(variables, mappings);
   assertEqual(result.isValid, false);
   assertEqual(result.emptyRequired.length, 1);
+});
+
+// ============================================
+// 템플릿 선택 로직 테스트
+// ============================================
+
+console.log('\n📋 템플릿 선택 로직 테스트');
+console.log('─'.repeat(40));
+
+// 테스트용 템플릿 생성
+const createTestTemplate = (
+  id: string,
+  name: string,
+  rules: SelectionRule[] = [],
+  isActive = true
+): Template => ({
+  id,
+  name,
+  displayName: name,
+  category: 'test',
+  rules,
+  isActive,
+});
+
+test('evaluateCondition: == 연산자', () => {
+  const condition: RuleCondition = { questionId: 'state', operator: '==', value: 'delaware' };
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'delaware' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: == 대소문자 무시', () => {
+  const condition: RuleCondition = { questionId: 'state', operator: '==', value: 'Delaware' };
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'DELAWARE' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: != 연산자', () => {
+  const condition: RuleCondition = { questionId: 'state', operator: '!=', value: 'california' };
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'delaware' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: contains 연산자', () => {
+  const condition: RuleCondition = { questionId: 'name', operator: 'contains', value: 'Corp' };
+  const responses: SurveyResponse[] = [{ questionId: 'name', value: 'Test Corporation Inc' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: in 연산자', () => {
+  const condition: RuleCondition = { questionId: 'state', operator: 'in', value: 'delaware,california,new york' };
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'california' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: > 연산자', () => {
+  const condition: RuleCondition = { questionId: 'capital', operator: '>', value: '1000000' };
+  const responses: SurveyResponse[] = [{ questionId: 'capital', value: '5000000' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: >= 연산자', () => {
+  const condition: RuleCondition = { questionId: 'capital', operator: '>=', value: '1000000' };
+  const responses: SurveyResponse[] = [{ questionId: 'capital', value: '1000000' }];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+test('evaluateCondition: 답변 없음 시 false', () => {
+  const condition: RuleCondition = { questionId: 'state', operator: '==', value: 'delaware' };
+  const responses: SurveyResponse[] = [];
+  assertEqual(evaluateCondition(condition, responses), false);
+});
+
+test('evaluateCondition: 답변 없음 + != 시 true', () => {
+  const condition: RuleCondition = { questionId: 'state', operator: '!=', value: 'delaware' };
+  const responses: SurveyResponse[] = [];
+  assertEqual(evaluateCondition(condition, responses), true);
+});
+
+console.log('\n📋 규칙 평가 테스트');
+console.log('─'.repeat(40));
+
+test('evaluateRules: 항상 사용 템플릿', () => {
+  const template = createTestTemplate('t1', 'Always Template', [
+    { conditions: [], priority: 1, isAlwaysInclude: true, isManualOnly: false },
+  ]);
+  const result = evaluateRules(template, []);
+  assertEqual(result.isAlwaysInclude, true);
+  assertEqual(result.score, 1.0);
+});
+
+test('evaluateRules: 수동 선택만 템플릿', () => {
+  const template = createTestTemplate('t2', 'Manual Only Template', [
+    { conditions: [], priority: 1, isAlwaysInclude: false, isManualOnly: true },
+  ]);
+  const result = evaluateRules(template, []);
+  assertEqual(result.isManualOnly, true);
+  assertEqual(result.score, 0);
+});
+
+test('evaluateRules: 규칙 100% 충족', () => {
+  const template = createTestTemplate('t3', 'Full Match Template', [
+    {
+      conditions: [{ questionId: 'state', operator: '==', value: 'delaware' }],
+      priority: 1,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    },
+  ]);
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'delaware' }];
+  const result = evaluateRules(template, responses);
+  assertEqual(result.score, 1.0);
+  assertEqual(result.matchedRules, 1);
+});
+
+test('evaluateRules: 규칙 50% 충족 (2개 중 1개)', () => {
+  const template = createTestTemplate('t4', 'Partial Match Template', [
+    {
+      conditions: [{ questionId: 'state', operator: '==', value: 'delaware' }],
+      priority: 1,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    },
+    {
+      conditions: [{ questionId: 'type', operator: '==', value: 'llc' }],
+      priority: 2,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    },
+  ]);
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'delaware' }];
+  const result = evaluateRules(template, responses);
+  assertEqual(result.score, 0.5);
+  assertEqual(result.matchedRules, 1);
+  assertEqual(result.totalRules, 2);
+});
+
+test('evaluateRules: AND 조건 - 모두 충족', () => {
+  const template = createTestTemplate('t5', 'AND Conditions Template', [
+    {
+      conditions: [
+        { questionId: 'state', operator: '==', value: 'delaware' },
+        { questionId: 'type', operator: '==', value: 'corp' },
+      ],
+      priority: 1,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    },
+  ]);
+  const responses: SurveyResponse[] = [
+    { questionId: 'state', value: 'delaware' },
+    { questionId: 'type', value: 'corp' },
+  ];
+  const result = evaluateRules(template, responses);
+  assertEqual(result.score, 1.0);
+});
+
+test('evaluateRules: AND 조건 - 일부만 충족', () => {
+  const template = createTestTemplate('t6', 'AND Partial Template', [
+    {
+      conditions: [
+        { questionId: 'state', operator: '==', value: 'delaware' },
+        { questionId: 'type', operator: '==', value: 'corp' },
+      ],
+      priority: 1,
+      isAlwaysInclude: false,
+      isManualOnly: false,
+    },
+  ]);
+  const responses: SurveyResponse[] = [{ questionId: 'state', value: 'delaware' }];
+  const result = evaluateRules(template, responses);
+  assertEqual(result.score, 0); // AND이므로 부분 충족은 0
+});
+
+console.log('\n📋 selectTemplates 테스트');
+console.log('─'.repeat(40));
+
+test('selectTemplates: 분류 테스트', () => {
+  const templates: Template[] = [
+    // 항상 사용 → required
+    createTestTemplate('always', 'Always Include', [
+      { conditions: [], priority: 1, isAlwaysInclude: true, isManualOnly: false },
+    ]),
+    // 100% 충족 → required
+    createTestTemplate('full-match', 'Full Match', [
+      {
+        conditions: [{ questionId: 'state', operator: '==', value: 'delaware' }],
+        priority: 1,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+    ]),
+    // 50% 초과 충족 → suggested (2개 중 2개 매칭이 아닌 경우)
+    createTestTemplate('partial-match', 'Partial Match', [
+      {
+        conditions: [{ questionId: 'state', operator: '==', value: 'delaware' }],
+        priority: 1,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+      {
+        conditions: [{ questionId: 'capital', operator: '>', value: '10000000' }],
+        priority: 2,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+    ]),
+    // 수동 선택만 → optional
+    createTestTemplate('manual-only', 'Manual Only', [
+      { conditions: [], priority: 1, isAlwaysInclude: false, isManualOnly: true },
+    ]),
+    // 규칙 없음 → optional
+    createTestTemplate('no-rules', 'No Rules', []),
+    // 비활성화 → 제외
+    createTestTemplate('inactive', 'Inactive', [], false),
+  ];
+
+  const responses: SurveyResponse[] = [
+    { questionId: 'state', value: 'delaware' },
+    { questionId: 'capital', value: '5000000' }, // 10,000,000 미만
+  ];
+
+  const result = selectTemplates(responses, templates);
+
+  // required: always + full-match
+  assertEqual(result.required.length, 2);
+  if (!result.required.find(t => t.id === 'always')) throw new Error('always not in required');
+  if (!result.required.find(t => t.id === 'full-match')) throw new Error('full-match not in required');
+
+  // suggested: partial-match (1/2 = 0.5, 50% 초과 아님)
+  // 실제로 0.5는 > 0.5가 아니므로 optional로 감
+  assertEqual(result.suggested.length, 0);
+
+  // optional: partial-match + manual-only + no-rules
+  assertEqual(result.optional.length, 3);
+  if (!result.optional.find(t => t.id === 'partial-match')) throw new Error('partial-match not in optional');
+  if (!result.optional.find(t => t.id === 'manual-only')) throw new Error('manual-only not in optional');
+  if (!result.optional.find(t => t.id === 'no-rules')) throw new Error('no-rules not in optional');
+
+  // inactive는 제외
+  const allIds = [...result.required, ...result.suggested, ...result.optional].map(t => t.id);
+  if (allIds.includes('inactive')) throw new Error('inactive should be excluded');
+});
+
+test('selectTemplates: 60% 충족 → suggested', () => {
+  const templates: Template[] = [
+    createTestTemplate('sixty-percent', 'Sixty Percent', [
+      {
+        conditions: [{ questionId: 'q1', operator: '==', value: 'yes' }],
+        priority: 1,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+      {
+        conditions: [{ questionId: 'q2', operator: '==', value: 'yes' }],
+        priority: 2,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+      {
+        conditions: [{ questionId: 'q3', operator: '==', value: 'yes' }],
+        priority: 3,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+      {
+        conditions: [{ questionId: 'q4', operator: '==', value: 'yes' }],
+        priority: 4,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+      {
+        conditions: [{ questionId: 'q5', operator: '==', value: 'yes' }],
+        priority: 5,
+        isAlwaysInclude: false,
+        isManualOnly: false,
+      },
+    ]),
+  ];
+
+  // 5개 중 3개 충족 = 60%
+  const responses: SurveyResponse[] = [
+    { questionId: 'q1', value: 'yes' },
+    { questionId: 'q2', value: 'yes' },
+    { questionId: 'q3', value: 'yes' },
+    { questionId: 'q4', value: 'no' },
+    { questionId: 'q5', value: 'no' },
+  ];
+
+  const result = selectTemplates(responses, templates);
+
+  assertEqual(result.suggested.length, 1);
+  assertEqual(result.suggested[0].id, 'sixty-percent');
 });
 
 // ============================================

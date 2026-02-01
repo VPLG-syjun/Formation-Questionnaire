@@ -1,6 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from 'redis';
+import {
+  selectTemplates,
+  SurveyResponse,
+  Template,
+  SelectionRule,
+  RuleCondition,
+} from '../../lib/document-generator.js';
 
+const SURVEYS_KEY = 'surveys';
 const TEMPLATES_KEY = 'templates';
 const TEMPLATE_RULES_KEY = 'template_rules';
 
@@ -8,68 +16,6 @@ async function getRedisClient() {
   const client = createClient({ url: process.env.REDIS_URL });
   await client.connect();
   return client;
-}
-
-// 조건 평가 함수
-function evaluateCondition(
-  answerValue: string | string[] | undefined,
-  operator: string,
-  conditionValue: string
-): boolean {
-  if (answerValue === undefined || answerValue === null) {
-    return false;
-  }
-
-  const answer = Array.isArray(answerValue) ? answerValue : [answerValue];
-  let conditionValues: string[];
-
-  try {
-    conditionValues = JSON.parse(conditionValue);
-    if (!Array.isArray(conditionValues)) {
-      conditionValues = [conditionValue];
-    }
-  } catch {
-    conditionValues = [conditionValue];
-  }
-
-  switch (operator) {
-    case '==':
-      return answer.some((a) => conditionValues.includes(a));
-
-    case '!=':
-      return !answer.some((a) => conditionValues.includes(a));
-
-    case 'contains':
-      return answer.some((a) =>
-        conditionValues.some((cv) => a.toLowerCase().includes(cv.toLowerCase()))
-      );
-
-    case 'not_contains':
-      return !answer.some((a) =>
-        conditionValues.some((cv) => a.toLowerCase().includes(cv.toLowerCase()))
-      );
-
-    case 'in':
-      return answer.every((a) => conditionValues.includes(a));
-
-    case 'not_in':
-      return !answer.some((a) => conditionValues.includes(a));
-
-    case '>=':
-      return answer.some((a) => parseFloat(a) >= parseFloat(conditionValues[0]));
-
-    case '<=':
-      return answer.some((a) => parseFloat(a) <= parseFloat(conditionValues[0]));
-
-    case '>':
-      return answer.some((a) => parseFloat(a) > parseFloat(conditionValues[0]));
-
-    case '<':
-      return answer.some((a) => parseFloat(a) < parseFloat(conditionValues[0]));
-
-    default:
-      return false;
-  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -89,80 +35,126 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     client = await getRedisClient();
 
-    const { answers } = req.body;
+    const { surveyId, answers } = req.body;
 
-    if (!answers || typeof answers !== 'object') {
-      return res.status(400).json({ error: '설문 답변이 필요합니다.' });
+    let responses: SurveyResponse[] = [];
+
+    // surveyId가 제공된 경우 설문 데이터 조회
+    if (surveyId) {
+      const surveyData = await client.hGet(SURVEYS_KEY, surveyId);
+      if (!surveyData) {
+        return res.status(404).json({ error: 'Survey not found' });
+      }
+
+      const survey = JSON.parse(surveyData);
+      responses = survey.answers || [];
+
+      // 고객 정보도 응답에 추가
+      if (survey.customerInfo) {
+        if (survey.customerInfo.name) {
+          responses.push({ questionId: '__customerName', value: survey.customerInfo.name });
+        }
+        if (survey.customerInfo.email) {
+          responses.push({ questionId: '__customerEmail', value: survey.customerInfo.email });
+        }
+        if (survey.customerInfo.company) {
+          responses.push({ questionId: '__customerCompany', value: survey.customerInfo.company });
+        }
+      }
+    }
+    // answers 객체가 직접 제공된 경우 (legacy 지원)
+    else if (answers && typeof answers === 'object') {
+      responses = Object.entries(answers).map(([questionId, value]) => ({
+        questionId,
+        value: value as string | string[],
+      }));
+    } else {
+      return res.status(400).json({ error: 'surveyId or answers is required' });
     }
 
     // 모든 활성화된 템플릿 조회
-    const allTemplates = await client.hGetAll(TEMPLATES_KEY);
-    const templates = Object.values(allTemplates)
-      .map((t) => JSON.parse(t))
+    const allTemplatesData = await client.hGetAll(TEMPLATES_KEY);
+    const templatesRaw = Object.values(allTemplatesData)
+      .map((t) => JSON.parse(t as string))
       .filter((t) => t.isActive);
 
     // 모든 규칙 조회
-    const allRules = await client.hGetAll(TEMPLATE_RULES_KEY);
-    const rules = Object.values(allRules)
-      .map((r) => JSON.parse(r))
-      .sort((a, b) => a.priority - b.priority);
+    const allRulesData = await client.hGetAll(TEMPLATE_RULES_KEY);
+    const allRules = Object.values(allRulesData).map((r) => JSON.parse(r as string));
 
-    // 각 템플릿에 대해 규칙 평가
-    const matchedTemplates: Array<{
-      template: any;
-      rule: any;
-      matchScore: number;
-    }> = [];
+    // 템플릿에 규칙 매핑
+    const templates: Template[] = templatesRaw.map((t) => {
+      const templateRules = allRules.filter((r) => r.templateId === t.id);
 
-    for (const template of templates) {
-      const templateRules = rules.filter((r) => r.templateId === template.id);
-
-      // 규칙이 없으면 건너뜀
-      if (templateRules.length === 0) {
-        continue;
-      }
-
-      for (const rule of templateRules) {
-        let matched = false;
-        let matchScore = 100 - rule.priority; // 우선순위가 낮을수록 점수 높음
-
-        if (rule.ruleType === 'always') {
-          // 항상 선택
-          matched = true;
-        } else if (rule.ruleType === 'question_answer') {
-          // 질문 답변 기반 선택
-          if (rule.questionId && rule.conditionOperator && rule.conditionValue !== null) {
-            const answerValue = answers[rule.questionId];
-            matched = evaluateCondition(answerValue, rule.conditionOperator, rule.conditionValue);
-          }
-        } else if (rule.ruleType === 'calculated') {
-          // 계산 기반 선택 (추후 구현)
-          // 예: 총 금액이 특정 값 이상일 때 등
-          matched = false;
+      // 규칙을 SelectionRule 형식으로 변환
+      const rules: SelectionRule[] = templateRules.map((r) => {
+        // 새 형식 규칙 (conditions 배열)
+        if (r.conditions && Array.isArray(r.conditions)) {
+          return {
+            id: r.id,
+            conditions: r.conditions as RuleCondition[],
+            priority: r.priority || 1,
+            isAlwaysInclude: r.isAlwaysInclude || false,
+            isManualOnly: r.isManualOnly || false,
+          };
         }
 
-        if (matched) {
-          matchedTemplates.push({
-            template,
-            rule,
-            matchScore,
+        // 레거시 형식 규칙 (단일 조건)
+        const conditions: RuleCondition[] = [];
+        if (r.ruleType === 'always') {
+          return {
+            id: r.id,
+            conditions: [],
+            priority: r.priority || 1,
+            isAlwaysInclude: true,
+            isManualOnly: false,
+          };
+        }
+
+        if (r.questionId && r.conditionOperator && r.conditionValue !== null) {
+          conditions.push({
+            questionId: r.questionId,
+            operator: r.conditionOperator,
+            value: r.conditionValue,
           });
-          break; // 하나의 규칙만 매칭되면 다음 템플릿으로
         }
-      }
-    }
 
-    // 점수순 정렬 (높은 점수 = 높은 우선순위)
-    matchedTemplates.sort((a, b) => b.matchScore - a.matchScore);
+        return {
+          id: r.id,
+          conditions,
+          priority: r.priority || 100,
+          isAlwaysInclude: false,
+          isManualOnly: false,
+        };
+      });
+
+      return {
+        id: t.id,
+        name: t.name,
+        displayName: t.displayName || t.name,
+        category: t.category || 'Other',
+        rules,
+        isActive: t.isActive,
+      };
+    });
+
+    // 템플릿 선택 로직 실행
+    const selection = selectTemplates(responses, templates);
 
     return res.status(200).json({
-      selectedTemplates: matchedTemplates.map((m) => m.template),
-      matchedRules: matchedTemplates,
-      totalMatched: matchedTemplates.length,
+      required: selection.required,
+      suggested: selection.suggested,
+      optional: selection.optional,
+      stats: {
+        totalTemplates: templates.length,
+        required: selection.required.length,
+        suggested: selection.suggested.length,
+        optional: selection.optional.length,
+      },
     });
   } catch (error) {
     console.error('Template Selection API Error:', error);
-    return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    return res.status(500).json({ error: 'Server error occurred' });
   } finally {
     if (client) await client.disconnect();
   }

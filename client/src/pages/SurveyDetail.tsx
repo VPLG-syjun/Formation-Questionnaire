@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Survey } from '../types/survey';
-import { fetchSurvey, updateSurvey, generatePDF, getDownloadURL } from '../services/api';
+import { fetchSurvey, updateSurvey } from '../services/api';
+import DocumentGenerationModal from '../components/DocumentGenerationModal';
 
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -11,8 +12,8 @@ export default function SurveyDetail() {
   const [error, setError] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
 
   useEffect(() => {
     loadSurvey();
@@ -50,21 +51,9 @@ export default function SurveyDetail() {
     }
   };
 
-  const handleGeneratePDF = async () => {
-    if (!id) return;
-
-    setIsGeneratingPDF(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      await generatePDF(id);
-      setMessage({ type: 'success', text: 'PDF 문서가 생성되었습니다.' });
-      loadSurvey();
-    } catch (err) {
-      setMessage({ type: 'error', text: 'PDF 생성에 실패했습니다.' });
-    } finally {
-      setIsGeneratingPDF(false);
-    }
+  const handleDocumentGenerated = () => {
+    loadSurvey();
+    setMessage({ type: 'success', text: '문서가 성공적으로 생성되었습니다.' });
   };
 
   const formatDate = (dateString?: string) => {
@@ -218,25 +207,29 @@ export default function SurveyDetail() {
 
             <button
               className="btn btn-primary"
-              onClick={handleGeneratePDF}
-              disabled={isGeneratingPDF || survey.status !== 'approved'}
+              onClick={() => setShowDocumentModal(true)}
+              disabled={survey.status !== 'approved'}
               title={survey.status !== 'approved' ? '승인된 설문만 문서 생성이 가능합니다' : ''}
             >
-              {isGeneratingPDF ? 'PDF 생성 중...' : 'PDF 문서 생성'}
+              📄 문서 생성
             </button>
 
             {survey.documentGeneratedAt && (
-              <a
-                href={getDownloadURL(survey.id)}
-                className="btn btn-secondary"
-                download
-              >
-                PDF 다운로드
-              </a>
+              <span className="doc-generated-badge">
+                ✅ 문서 생성됨 ({formatDate(survey.documentGeneratedAt)})
+              </span>
             )}
           </div>
         </div>
       </div>
+
+      {/* Document Generation Modal */}
+      <DocumentGenerationModal
+        isOpen={showDocumentModal}
+        onClose={() => setShowDocumentModal(false)}
+        surveyId={survey.id}
+        onComplete={handleDocumentGenerated}
+      />
     </div>
   );
 }

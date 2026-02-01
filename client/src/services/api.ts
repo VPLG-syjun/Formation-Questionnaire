@@ -66,3 +66,113 @@ export async function fetchStats(): Promise<SurveyStats> {
   if (!response.ok) throw new Error('통계를 불러오는데 실패했습니다.');
   return response.json();
 }
+
+// ============================================
+// Template & Document Generation APIs
+// ============================================
+
+export interface Template {
+  id: string;
+  name: string;
+  displayName: string;
+  category: string;
+  isActive: boolean;
+}
+
+export interface TemplateSelection {
+  required: Template[];
+  suggested: Template[];
+  optional: Template[];
+}
+
+export interface DocumentResult {
+  templateId: string;
+  templateName: string;
+  filename: string;
+  status: 'success' | 'error';
+  error?: string;
+  missingVariables?: string[];
+}
+
+export interface GenerateDocumentsResponse {
+  success: boolean;
+  documents: DocumentResult[];
+  zipFile: string;
+  downloadUrl: string;
+  generationId: string;
+  stats: {
+    total: number;
+    successful: number;
+    failed: number;
+  };
+  error?: string;
+}
+
+export async function selectTemplates(surveyId: string): Promise<TemplateSelection> {
+  const response = await fetch(`${API_BASE}/templates/select`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ surveyId }),
+  });
+  if (!response.ok) throw new Error('템플릿 선택에 실패했습니다.');
+  return response.json();
+}
+
+export async function generateDocuments(
+  surveyId: string,
+  selectedTemplates: string[],
+  overrideVariables?: Record<string, string>
+): Promise<GenerateDocumentsResponse> {
+  const response = await fetch(`${API_BASE}/admin/generate-documents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      surveyId,
+      selectedTemplates,
+      overrideVariables,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || '문서 생성에 실패했습니다.');
+  }
+
+  return data;
+}
+
+export function getDocumentDownloadURL(downloadId: string): string {
+  return `${API_BASE}/admin/download/${downloadId}`;
+}
+
+// Manual Variables for Document Generation
+export interface ManualVariable {
+  variableName: string;
+  dataType: string;
+  transformRule: string;
+  required: boolean;
+  defaultValue?: string;
+  usedInTemplates: string[];
+}
+
+export interface ManualVariablesResponse {
+  variables: ManualVariable[];
+  totalCount: number;
+  requiredCount: number;
+}
+
+export async function getManualVariables(templateIds: string[]): Promise<ManualVariablesResponse> {
+  const response = await fetch(`${API_BASE}/admin/get-manual-variables`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ templateIds }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.error || '직접 입력 변수 조회에 실패했습니다.');
+  }
+
+  return response.json();
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import TemplatePreviewModal from '../components/TemplatePreviewModal';
 
 interface Template {
   id: string;
@@ -32,6 +33,10 @@ export default function TemplateManagement() {
   const [scanning, setScanning] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [showScanModal, setShowScanModal] = useState(false);
+
+  // 미리보기 상태
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -316,9 +321,19 @@ export default function TemplateManagement() {
                         <button
                           className="btn btn-outline"
                           style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                          onClick={() => {
+                            setPreviewTemplate(template);
+                            setShowPreviewModal(true);
+                          }}
+                        >
+                          👁 미리보기
+                        </button>
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: '6px 12px', fontSize: '0.85rem' }}
                           onClick={() => handleDownload(template.id)}
                         >
-                          미리보기
+                          📥 다운로드
                         </button>
                         <button
                           className="btn btn-danger"
@@ -477,6 +492,20 @@ export default function TemplateManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 템플릿 미리보기 모달 */}
+      {previewTemplate && (
+        <TemplatePreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => {
+            setShowPreviewModal(false);
+            setPreviewTemplate(null);
+          }}
+          templateId={previewTemplate.id}
+          templateName={previewTemplate.displayName || previewTemplate.name}
+          useSampleData={true}
+        />
       )}
     </div>
   );
