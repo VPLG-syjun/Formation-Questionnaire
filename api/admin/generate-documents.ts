@@ -185,6 +185,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // 관리자가 설정한 날짜 추가 (COIDate, SIGNDate)
+    if (survey.adminDates) {
+      if (survey.adminDates.COIDate) {
+        responses.push({ questionId: '__COIDate', value: survey.adminDates.COIDate });
+      }
+      if (survey.adminDates.SIGNDate) {
+        responses.push({ questionId: '__SIGNDate', value: survey.adminDates.SIGNDate });
+      }
+    }
+
     // 회사명 추출 (ZIP 파일명용)
     const companyNameResponse = responses.find(r => r.questionId === 'companyName' || r.questionId === 'companyName1');
     const companyNameValue = companyNameResponse?.value;

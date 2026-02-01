@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const survey = JSON.parse(data);
-      const { status, adminNotes } = req.body;
+      const { status, adminNotes, answers, adminDates } = req.body;
 
       if (status) {
         survey.status = status;
@@ -50,9 +50,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (adminNotes !== undefined) {
         survey.adminNotes = adminNotes;
       }
+      // 설문 응답 업데이트
+      if (answers !== undefined) {
+        survey.answers = answers;
+      }
+      // 관리자 날짜 설정 업데이트
+      if (adminDates !== undefined) {
+        survey.adminDates = { ...survey.adminDates, ...adminDates };
+      }
 
       await client.hSet('surveys', id, JSON.stringify(survey));
-      return res.status(200).json({ message: '설문이 업데이트되었습니다.' });
+      return res.status(200).json({ message: '설문이 업데이트되었습니다.', survey });
     }
 
     if (req.method === 'DELETE') {

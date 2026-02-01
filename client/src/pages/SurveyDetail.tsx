@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Survey } from '../types/survey';
+import { Survey, SurveyAnswer } from '../types/survey';
 import { fetchSurvey, updateSurvey } from '../services/api';
 import DocumentGenerationModal from '../components/DocumentGenerationModal';
 
@@ -15,21 +15,37 @@ export default function SurveyDetail() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showDocumentModal, setShowDocumentModal] = useState(false);
 
+  // 편집 모드 상태
+  const [editingAnswers, setEditingAnswers] = useState(false);
+  const [editedAnswers, setEditedAnswers] = useState<SurveyAnswer[]>([]);
+
+  // 관리자 날짜 상태
+  const [coiDate, setCoiDate] = useState('');
+  const [signDate, setSignDate] = useState('');
+
   useEffect(() => {
     loadSurvey();
   }, [id]);
+
+  // survey가 로드되면 날짜 상태 초기화
+  useEffect(() => {
+    if (survey) {
+      setCoiDate(survey.adminDates?.COIDate || '');
+      setSignDate(survey.adminDates?.SIGNDate || '');
+    }
+  }, [survey]);
 
   const loadSurvey = async (showLoading = true) => {
     if (!id) return;
 
     try {
-      // 초기 로드 시에만 로딩 표시 (모달이 열려있을 때는 표시하지 않음)
       if (showLoading && !survey) {
         setLoading(true);
       }
       const data = await fetchSurvey(id);
       setSurvey(data);
       setAdminNotes(data.adminNotes || '');
+      setEditedAnswers(data.answers || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : '설문을 불러오는데 실패했습니다.');
     } finally {
@@ -55,9 +71,73 @@ export default function SurveyDetail() {
   };
 
   const handleDocumentGenerated = () => {
-    // 모달이 열려있을 때는 로딩 표시 없이 데이터만 갱신
     loadSurvey(false);
     setMessage({ type: 'success', text: '문서가 성공적으로 생성되었습니다.' });
+  };
+
+  // 응답 편집 시작
+  const handleStartEditAnswers = () => {
+    if (survey) {
+      setEditedAnswers([...survey.answers]);
+      setEditingAnswers(true);
+    }
+  };
+
+  // 응답 편집 취소
+  const handleCancelEditAnswers = () => {
+    if (survey) {
+      setEditedAnswers([...survey.answers]);
+    }
+    setEditingAnswers(false);
+  };
+
+  // 개별 응답 수정
+  const handleAnswerChange = (index: number, newValue: string | string[]) => {
+    const updated = [...editedAnswers];
+    updated[index] = { ...updated[index], value: newValue };
+    setEditedAnswers(updated);
+  };
+
+  // 응답 저장
+  const handleSaveAnswers = async () => {
+    if (!id) return;
+
+    setIsUpdating(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      await updateSurvey(id, { answers: editedAnswers });
+      setMessage({ type: 'success', text: '설문 응답이 저장되었습니다.' });
+      setEditingAnswers(false);
+      loadSurvey(false);
+    } catch (err) {
+      setMessage({ type: 'error', text: '응답 저장에 실패했습니다.' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 관리자 날짜 저장
+  const handleSaveDates = async () => {
+    if (!id) return;
+
+    setIsUpdating(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      await updateSurvey(id, {
+        adminDates: {
+          COIDate: coiDate || undefined,
+          SIGNDate: signDate || undefined,
+        },
+      });
+      setMessage({ type: 'success', text: '날짜가 저장되었습니다.' });
+      loadSurvey(false);
+    } catch (err) {
+      setMessage({ type: 'error', text: '날짜 저장에 실패했습니다.' });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const formatDate = (dateString?: string) => {
@@ -167,15 +247,139 @@ export default function SurveyDetail() {
 
         {/* Survey Answers */}
         <div className="detail-section">
-          <h3>설문 응답</h3>
-          {survey.answers?.map((answer, index) => (
-            <div key={index} className="question-card">
-              <h4>{answer.questionId}</h4>
-              <p style={{ marginTop: '10px', color: '#374151' }}>
-                {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
-              </p>
+          <div className="section-header">
+            <h3>설문 응답</h3>
+            {!editingAnswers ? (
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={handleStartEditAnswers}
+              >
+                편집
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={handleCancelEditAnswers}
+                  disabled={isUpdating}
+                >
+                  취소
+                </button>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={handleSaveAnswers}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {editingAnswers ? (
+            // 편집 모드
+            <div className="answers-edit-list">
+              {editedAnswers.map((answer, index) => (
+                <div key={index} className="answer-edit-item">
+                  <label className="answer-edit-label">{answer.questionId}</label>
+                  {Array.isArray(answer.value) ? (
+                    <textarea
+                      className="answer-edit-input"
+                      value={answer.value.join('\n')}
+                      onChange={(e) =>
+                        handleAnswerChange(
+                          index,
+                          e.target.value.split('\n').filter((v) => v.trim())
+                        )
+                      }
+                      rows={3}
+                      placeholder="각 줄에 하나씩 입력"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      className="answer-edit-input"
+                      value={answer.value}
+                      onChange={(e) => handleAnswerChange(index, e.target.value)}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            // 보기 모드
+            survey.answers?.map((answer, index) => (
+              <div key={index} className="question-card">
+                <h4>{answer.questionId}</h4>
+                <p style={{ marginTop: '10px', color: '#374151' }}>
+                  {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Admin Dates - COIDate & SIGNDate */}
+        <div className="detail-section">
+          <h3>문서 생성 날짜 설정</h3>
+          <p className="section-description">
+            문서 생성 시 사용될 날짜를 설정합니다. 설정하지 않으면 문서 생성 시점의 날짜가 사용됩니다.
+          </p>
+
+          <div className="admin-dates-grid">
+            <div className="admin-date-field">
+              <label>COIDate (Certificate of Incorporation)</label>
+              <input
+                type="date"
+                value={coiDate}
+                onChange={(e) => setCoiDate(e.target.value)}
+                className="date-input"
+              />
+              {coiDate && (
+                <span className="date-preview">
+                  {new Date(coiDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+              )}
+            </div>
+
+            <div className="admin-date-field">
+              <label>SIGNDate (서명 날짜)</label>
+              <input
+                type="date"
+                value={signDate}
+                onChange={(e) => setSignDate(e.target.value)}
+                className="date-input"
+              />
+              {signDate && (
+                <span className="date-preview">
+                  {new Date(signDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: '16px' }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleSaveDates}
+              disabled={isUpdating}
+            >
+              {isUpdating ? '저장 중...' : '날짜 저장'}
+            </button>
+            {(survey.adminDates?.COIDate || survey.adminDates?.SIGNDate) && (
+              <span className="saved-indicator" style={{ marginLeft: '12px' }}>
+                ✓ 저장됨
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Admin Actions */}

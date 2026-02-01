@@ -490,7 +490,38 @@ export function transformSurveyToVariables(
   // 한글 날짜 (필요한 경우)
   result['currentDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
 
-  // 2. 매핑된 변수 처리
+  // 3. 관리자 설정 날짜 (COIDate, SIGNDate) 처리
+  const coiDateResponse = responses.find(r => r.questionId === '__COIDate');
+  if (coiDateResponse?.value) {
+    const coiDateValue = Array.isArray(coiDateResponse.value) ? coiDateResponse.value[0] : coiDateResponse.value;
+    result['COIDate'] = formatDate(coiDateValue, 'MMMM D, YYYY');
+    result['COIDateShort'] = formatDate(coiDateValue, 'MM/DD/YYYY');
+    result['COIDateISO'] = formatDate(coiDateValue, 'YYYY-MM-DD');
+    result['COIDateKR'] = formatDate(coiDateValue, 'YYYY년 MM월 DD일');
+  } else {
+    // 기본값: 현재 날짜
+    result['COIDate'] = getCurrentDate('MMMM D, YYYY');
+    result['COIDateShort'] = getCurrentDate('MM/DD/YYYY');
+    result['COIDateISO'] = getCurrentDate('YYYY-MM-DD');
+    result['COIDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
+  }
+
+  const signDateResponse = responses.find(r => r.questionId === '__SIGNDate');
+  if (signDateResponse?.value) {
+    const signDateValue = Array.isArray(signDateResponse.value) ? signDateResponse.value[0] : signDateResponse.value;
+    result['SIGNDate'] = formatDate(signDateValue, 'MMMM D, YYYY');
+    result['SIGNDateShort'] = formatDate(signDateValue, 'MM/DD/YYYY');
+    result['SIGNDateISO'] = formatDate(signDateValue, 'YYYY-MM-DD');
+    result['SIGNDateKR'] = formatDate(signDateValue, 'YYYY년 MM월 DD일');
+  } else {
+    // 기본값: 현재 날짜
+    result['SIGNDate'] = getCurrentDate('MMMM D, YYYY');
+    result['SIGNDateShort'] = getCurrentDate('MM/DD/YYYY');
+    result['SIGNDateISO'] = getCurrentDate('YYYY-MM-DD');
+    result['SIGNDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
+  }
+
+  // 4. 매핑된 변수 처리
   for (const mapping of variableMappings) {
     const variableKey = mapping.variableName;
 

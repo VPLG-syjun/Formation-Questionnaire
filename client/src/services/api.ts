@@ -1,4 +1,4 @@
-import { Survey, CreateSurveyDTO, SurveyStats } from '../types/survey';
+import { Survey, CreateSurveyDTO, SurveyStats, SurveyAnswer, AdminDates } from '../types/survey';
 
 const API_BASE = '/api';
 
@@ -28,10 +28,17 @@ export async function createSurvey(data: CreateSurveyDTO): Promise<{ id: string;
   return response.json();
 }
 
+export interface UpdateSurveyData {
+  status?: string;
+  adminNotes?: string;
+  answers?: SurveyAnswer[];
+  adminDates?: AdminDates;
+}
+
 export async function updateSurvey(
   id: string,
-  data: { status?: string; adminNotes?: string }
-): Promise<{ message: string }> {
+  data: UpdateSurveyData
+): Promise<{ message: string; survey?: Survey }> {
   const response = await fetch(`${API_BASE}/surveys/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },

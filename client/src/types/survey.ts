@@ -53,6 +53,12 @@ export interface SurveyAnswer {
   price?: number;
 }
 
+// 관리자가 설정하는 날짜 변수
+export interface AdminDates {
+  COIDate?: string;   // Certificate of Incorporation 날짜
+  SIGNDate?: string;  // 서명 날짜
+}
+
 // 설문 제출 데이터
 export interface Survey {
   id: string;
@@ -66,6 +72,7 @@ export interface Survey {
   totalPrice: number;
   status: 'pending' | 'approved' | 'rejected';
   adminNotes?: string;
+  adminDates?: AdminDates;  // 관리자가 설정하는 날짜들
   createdAt: string;
   reviewedAt?: string;
   documentGeneratedAt?: string;
