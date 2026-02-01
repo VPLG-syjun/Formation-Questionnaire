@@ -114,11 +114,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const allVariables = await client.hGetAll(TEMPLATE_VARIABLES_KEY);
         const varsList = Object.values(allVariables).map(v => JSON.parse(v as string));
 
-        // 선택된 템플릿의 직접 입력 변수만 필터링
+        // 선택된 템플릿의 직접 입력 변수만 필터링 (계산 변수는 제외)
         const manualVariables = varsList
           .filter(v =>
             templateIds.includes(v.templateId) &&
-            (v.questionId === '__manual__' || v.questionId === '__calculated__')
+            v.questionId === '__manual__'  // 계산 변수(__calculated__)는 자동 계산되므로 제외
           )
           .map(v => ({
             id: v.id,
@@ -182,7 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const savedVariables = [];
         for (const v of variables) {
           const id = v.id || uuidv4();
-          const variable = {
+          const variable: Record<string, unknown> = {
             id,
             templateId,
             variableName: v.variableName,
@@ -191,6 +191,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             transformRule: v.transformRule || 'none',
             required: v.required !== undefined ? v.required : true,
           };
+
+          // 계산 변수인 경우 formula 저장
+          if (v.questionId === '__calculated__' && v.formula) {
+            variable.formula = v.formula;
+          }
 
           await client.hSet(TEMPLATE_VARIABLES_KEY, id, JSON.stringify(variable));
           savedVariables.push(variable);
