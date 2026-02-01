@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from 'redis';
 import {
   selectTemplates,
+  evaluateRules,
   SurveyResponse,
   Template,
   SelectionRule,
@@ -141,10 +142,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 템플릿 선택 로직 실행
     const selection = selectTemplates(responses, templates);
 
+    // 디버깅을 위한 규칙 평가 결과 (개발 중에만 사용)
+    const debugEvaluations = templates.map((t) => {
+      const evaluation = evaluateRules(t, responses);
+      return {
+        templateId: t.id,
+        templateName: t.displayName || t.name,
+        rules: t.rules?.map((r) => ({
+          id: r.id,
+          conditions: r.conditions,
+          isAlwaysInclude: r.isAlwaysInclude,
+          isManualOnly: r.isManualOnly,
+        })),
+        evaluation,
+      };
+    });
+
     return res.status(200).json({
       required: selection.required,
       suggested: selection.suggested,
       optional: selection.optional,
+      debug: {
+        surveyResponses: responses.map((r) => ({
+          questionId: r.questionId,
+          value: r.value,
+        })),
+        templateEvaluations: debugEvaluations,
+      },
       stats: {
         totalTemplates: templates.length,
         required: selection.required.length,

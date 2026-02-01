@@ -648,9 +648,21 @@ export function evaluateCondition(
 
   switch (condition.operator) {
     case '==':
+      // 숫자 비교 시도 (양쪽이 숫자인 경우)
+      const numValue = parseFloat(valueStr);
+      const numCondition = parseFloat(conditionValue);
+      if (!isNaN(numValue) && !isNaN(numCondition)) {
+        return numValue === numCondition;
+      }
       return valueStr.toLowerCase() === conditionValue.toLowerCase();
 
     case '!=':
+      // 숫자 비교 시도
+      const numValue2 = parseFloat(valueStr);
+      const numCondition2 = parseFloat(conditionValue);
+      if (!isNaN(numValue2) && !isNaN(numCondition2)) {
+        return numValue2 !== numCondition2;
+      }
       return valueStr.toLowerCase() !== conditionValue.toLowerCase();
 
     case 'contains':

@@ -248,6 +248,12 @@ export default function TemplateManagement() {
 
   return (
     <div>
+      <div style={{ marginBottom: '20px' }}>
+        <Link to="/admin" className="btn btn-outline">
+          &larr; 대시보드로 돌아가기
+        </Link>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
         <h2 style={{ color: 'var(--color-primary)', fontWeight: 700 }}>
           템플릿 관리
