@@ -166,47 +166,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const survey = JSON.parse(surveyData);
 
-    // 설문 답변을 SurveyResponse 형식으로 변환
-    const responses: SurveyResponse[] = survey.answers || [];
+    // 설문 답변을 Map으로 관리 (동일 questionId는 마지막 값으로 덮어씀)
+    const responsesMap = new Map<string, SurveyResponse>();
 
-    // 고객 정보도 응답에 추가 (변수로 사용 가능하도록)
+    // 1. 기존 설문 답변 추가
+    const surveyAnswers: SurveyResponse[] = survey.answers || [];
+    for (const answer of surveyAnswers) {
+      responsesMap.set(answer.questionId, answer);
+    }
+
+    // 2. 고객 정보 추가 (덮어씀)
     if (survey.customerInfo) {
       if (survey.customerInfo.name) {
-        responses.push({ questionId: '__customerName', value: survey.customerInfo.name });
+        responsesMap.set('__customerName', { questionId: '__customerName', value: survey.customerInfo.name });
       }
       if (survey.customerInfo.email) {
-        responses.push({ questionId: '__customerEmail', value: survey.customerInfo.email });
+        responsesMap.set('__customerEmail', { questionId: '__customerEmail', value: survey.customerInfo.email });
       }
       if (survey.customerInfo.phone) {
-        responses.push({ questionId: '__customerPhone', value: survey.customerInfo.phone });
+        responsesMap.set('__customerPhone', { questionId: '__customerPhone', value: survey.customerInfo.phone });
       }
       if (survey.customerInfo.company) {
-        responses.push({ questionId: '__customerCompany', value: survey.customerInfo.company });
+        responsesMap.set('__customerCompany', { questionId: '__customerCompany', value: survey.customerInfo.company });
       }
     }
 
-    // 관리자가 설정한 날짜 추가 (COIDate, SIGNDate)
+    // 3. 관리자가 설정한 날짜 추가 (덮어씀)
     if (survey.adminDates) {
       if (survey.adminDates.COIDate) {
-        responses.push({ questionId: '__COIDate', value: survey.adminDates.COIDate });
+        responsesMap.set('__COIDate', { questionId: '__COIDate', value: survey.adminDates.COIDate });
       }
       if (survey.adminDates.SIGNDate) {
-        responses.push({ questionId: '__SIGNDate', value: survey.adminDates.SIGNDate });
+        responsesMap.set('__SIGNDate', { questionId: '__SIGNDate', value: survey.adminDates.SIGNDate });
       }
     }
 
-    // 관리자가 설정한 값 추가 (Authorized Shares, Par Value, Fair Market Value)
+    // 4. 관리자가 설정한 값 추가 (덮어씀)
     if (survey.adminValues) {
       if (survey.adminValues.authorizedShares) {
-        responses.push({ questionId: '__authorizedShares', value: survey.adminValues.authorizedShares });
+        responsesMap.set('__authorizedShares', { questionId: '__authorizedShares', value: survey.adminValues.authorizedShares });
       }
       if (survey.adminValues.parValue) {
-        responses.push({ questionId: '__parValue', value: survey.adminValues.parValue });
+        responsesMap.set('__parValue', { questionId: '__parValue', value: survey.adminValues.parValue });
       }
       if (survey.adminValues.fairMarketValue) {
-        responses.push({ questionId: '__fairMarketValue', value: survey.adminValues.fairMarketValue });
+        responsesMap.set('__fairMarketValue', { questionId: '__fairMarketValue', value: survey.adminValues.fairMarketValue });
       }
     }
+
+    // Map을 배열로 변환
+    const responses: SurveyResponse[] = Array.from(responsesMap.values());
 
     // 회사명 추출 (ZIP 파일명용)
     const companyNameResponse = responses.find(r => r.questionId === 'companyName' || r.questionId === 'companyName1');

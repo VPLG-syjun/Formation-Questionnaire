@@ -50,9 +50,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (adminNotes !== undefined) {
         survey.adminNotes = adminNotes;
       }
-      // 설문 응답 업데이트
+      // 설문 응답 업데이트 (동일한 questionId가 있으면 마지막 값만 유지)
       if (answers !== undefined) {
-        survey.answers = answers;
+        // questionId를 키로 사용하여 중복 제거 (마지막 값 유지)
+        const answersMap = new Map();
+        for (const answer of answers) {
+          answersMap.set(answer.questionId, answer);
+        }
+        survey.answers = Array.from(answersMap.values());
       }
       // 관리자 날짜 설정 업데이트
       if (adminDates !== undefined) {
