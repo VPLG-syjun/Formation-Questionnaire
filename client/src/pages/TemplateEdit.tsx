@@ -485,6 +485,10 @@ export default function TemplateEdit() {
                           <option value="__manual__">직접 입력</option>
                           <option value="__calculated__">계산된 값</option>
                         </optgroup>
+                        <optgroup label="관리자 설정 날짜">
+                          <option value="__COIDate">COIDate (법인설립일)</option>
+                          <option value="__SIGNDate">SIGNDate (서명일)</option>
+                        </optgroup>
                         {questionSections.map(section => (
                           <optgroup key={section.id} label={section.title}>
                             {section.questions.map(q => (
@@ -742,6 +746,10 @@ export default function TemplateEdit() {
                   <optgroup label="특수 옵션">
                     <option value="__manual__">직접 입력</option>
                     <option value="__calculated__">계산된 값</option>
+                  </optgroup>
+                  <optgroup label="관리자 설정 날짜">
+                    <option value="__COIDate">COIDate (법인설립일)</option>
+                    <option value="__SIGNDate">SIGNDate (서명일)</option>
                   </optgroup>
                   {questionSections.map(section => (
                     <optgroup key={section.id} label={section.title}>
