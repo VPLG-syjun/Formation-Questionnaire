@@ -803,9 +803,22 @@ export function transformSurveyToVariables(
       result[`hasSingle${capitalizedName}`] = groupItems.length === 1 ? 'true' : '';
 
       // 각 필드별 배열 생성 (예: directorsName, directorsEmail 등)
+      // 숫자 필드 (콤마 포맷팅 적용)
+      const numericFields = ['cash'];
       const fieldNames = Object.keys(groupItems[0] || {});
       for (const fieldName of fieldNames) {
-        const fieldValues = groupItems.map(item => item[fieldName] || '');
+        const isNumericField = numericFields.includes(fieldName.toLowerCase());
+        const fieldValues = groupItems.map(item => {
+          const val = item[fieldName] || '';
+          // 숫자 필드인 경우 콤마 포맷팅 적용
+          if (isNumericField && val) {
+            const numVal = parseFloat(val.replace(/,/g, ''));
+            if (!isNaN(numVal)) {
+              return formatNumberWithComma(numVal);
+            }
+          }
+          return val;
+        });
         const fieldCapitalized = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
 
         // 필드별 포맷팅된 목록
@@ -829,12 +842,28 @@ export function transformSurveyToVariables(
 
       // 반복문용 배열 데이터 (docxtemplater loop 용)
       // 문자열이 아닌 배열은 별도로 저장 (나중에 docxtemplater에 전달)
-      (result as Record<string, unknown>)[baseName] = groupItems.map((item, index) => ({
-        ...item,
-        index: index + 1,
-        isFirst: index === 0,
-        isLast: index === groupItems.length - 1,
-      }));
+      (result as Record<string, unknown>)[baseName] = groupItems.map((item, index) => {
+        // 숫자 필드에 콤마 포맷팅 적용
+        const formattedItem: Record<string, string | number | boolean> = {};
+        for (const [key, val] of Object.entries(item)) {
+          if (numericFields.includes(key.toLowerCase()) && val) {
+            const numVal = parseFloat(val.replace(/,/g, ''));
+            if (!isNaN(numVal)) {
+              formattedItem[key] = formatNumberWithComma(numVal);
+            } else {
+              formattedItem[key] = val;
+            }
+          } else {
+            formattedItem[key] = val;
+          }
+        }
+        return {
+          ...formattedItem,
+          index: index + 1,
+          isFirst: index === 0,
+          isLast: index === groupItems.length - 1,
+        };
+      });
     }
   }
 
