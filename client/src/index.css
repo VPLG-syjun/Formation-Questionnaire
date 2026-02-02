@@ -2411,3 +2411,100 @@ textarea.answer-edit-input {
   color: var(--color-gray-700);
   word-break: break-word;
 }
+
+/* Corrupted Data Warning */
+.corrupted-data-warning {
+  display: flex;
+  gap: var(--spacing-md);
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.corrupted-data-warning .warning-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.corrupted-data-warning .warning-content {
+  flex: 1;
+}
+
+.corrupted-data-warning .warning-content strong {
+  color: #b45309;
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.corrupted-data-warning .warning-content p {
+  margin: var(--spacing-xs) 0;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.corrupted-data-warning .raw-value {
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.8rem;
+  background: rgba(0,0,0,0.05);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  margin-top: var(--spacing-sm);
+  word-break: break-all;
+}
+
+/* Repeatable Groups Edit Section */
+.repeatable-groups-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.repeatable-group-edit-section {
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.repeatable-group-edit-section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.repeatable-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.repeatable-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.repeatable-edit-field label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-gray-600);
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+}
+
+.repeatable-edit-field input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.repeatable-edit-field input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.1);
+}

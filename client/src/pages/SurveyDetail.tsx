@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Survey, SurveyAnswer } from '../types/survey';
+import { Survey, SurveyAnswer, RepeatableGroupItem } from '../types/survey';
 import { fetchSurvey, updateSurvey } from '../services/api';
 import DocumentGenerationModal from '../components/DocumentGenerationModal';
+
+// Directors/Founders 필드 정의
+const DIRECTOR_FIELDS = ['name', 'address', 'email'];
+const FOUNDER_FIELDS = ['name', 'type', 'address', 'email', 'cash'];
+
+interface RepeatableGroupState {
+  [groupId: string]: RepeatableGroupItem[];
+}
 
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +36,13 @@ export default function SurveyDetail() {
   const [parValue, setParValue] = useState('');
   const [fairMarketValue, setFairMarketValue] = useState('');
 
+  // 반복 그룹 편집 상태
+  const [editingRepeatableGroups, setEditingRepeatableGroups] = useState(false);
+  const [repeatableGroups, setRepeatableGroups] = useState<RepeatableGroupState>({
+    directors: [],
+    founders: [],
+  });
+
   useEffect(() => {
     loadSurvey();
   }, [id]);
@@ -40,6 +55,43 @@ export default function SurveyDetail() {
       setAuthorizedShares(survey.adminValues?.authorizedShares || '');
       setParValue(survey.adminValues?.parValue || '');
       setFairMarketValue(survey.adminValues?.fairMarketValue || '');
+
+      // 반복 그룹 데이터 초기화
+      const directorsAnswer = survey.answers?.find(a => a.questionId === 'directors');
+      const foundersAnswer = survey.answers?.find(a => a.questionId === 'founders');
+
+      const newGroups: RepeatableGroupState = {
+        directors: [],
+        founders: [],
+      };
+
+      // Directors 데이터 처리
+      if (directorsAnswer && Array.isArray(directorsAnswer.value) && directorsAnswer.value.length > 0) {
+        if (typeof directorsAnswer.value[0] === 'object' && directorsAnswer.value[0] !== null) {
+          newGroups.directors = directorsAnswer.value as RepeatableGroupItem[];
+        }
+      }
+      // 데이터가 없거나 손상된 경우 빈 항목 1개 추가
+      if (newGroups.directors.length === 0) {
+        const emptyDirector: RepeatableGroupItem = {};
+        DIRECTOR_FIELDS.forEach(f => emptyDirector[f] = '');
+        newGroups.directors = [emptyDirector];
+      }
+
+      // Founders 데이터 처리
+      if (foundersAnswer && Array.isArray(foundersAnswer.value) && foundersAnswer.value.length > 0) {
+        if (typeof foundersAnswer.value[0] === 'object' && foundersAnswer.value[0] !== null) {
+          newGroups.founders = foundersAnswer.value as RepeatableGroupItem[];
+        }
+      }
+      // 데이터가 없거나 손상된 경우 빈 항목 1개 추가
+      if (newGroups.founders.length === 0) {
+        const emptyFounder: RepeatableGroupItem = {};
+        FOUNDER_FIELDS.forEach(f => emptyFounder[f] = '');
+        newGroups.founders = [emptyFounder];
+      }
+
+      setRepeatableGroups(newGroups);
     }
   }, [survey]);
 
@@ -190,6 +242,71 @@ export default function SurveyDetail() {
     }
   };
 
+  // 반복 그룹 필드 변경
+  const handleRepeatableFieldChange = (groupId: string, itemIndex: number, fieldId: string, value: string) => {
+    setRepeatableGroups(prev => {
+      const newGroups = { ...prev };
+      const items = [...(newGroups[groupId] || [])];
+      items[itemIndex] = { ...items[itemIndex], [fieldId]: value };
+      newGroups[groupId] = items;
+      return newGroups;
+    });
+  };
+
+  // 반복 그룹 항목 추가
+  const handleAddRepeatableItem = (groupId: string) => {
+    const fields = groupId === 'directors' ? DIRECTOR_FIELDS : FOUNDER_FIELDS;
+    const newItem: RepeatableGroupItem = {};
+    fields.forEach(f => newItem[f] = '');
+
+    setRepeatableGroups(prev => ({
+      ...prev,
+      [groupId]: [...(prev[groupId] || []), newItem],
+    }));
+  };
+
+  // 반복 그룹 항목 삭제
+  const handleRemoveRepeatableItem = (groupId: string, itemIndex: number) => {
+    setRepeatableGroups(prev => ({
+      ...prev,
+      [groupId]: (prev[groupId] || []).filter((_, i) => i !== itemIndex),
+    }));
+  };
+
+  // 반복 그룹 데이터 저장
+  const handleSaveRepeatableGroups = async () => {
+    if (!id || !survey) return;
+
+    setIsUpdating(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      // 기존 answers에서 directors, founders 제거 후 새 데이터 추가
+      const otherAnswers = (survey.answers || []).filter(
+        a => a.questionId !== 'directors' && a.questionId !== 'founders'
+      );
+
+      const newAnswers: SurveyAnswer[] = [
+        ...otherAnswers,
+        { questionId: 'directors', value: repeatableGroups.directors },
+        { questionId: 'founders', value: repeatableGroups.founders },
+      ];
+
+      const result = await updateSurvey(id, { answers: newAnswers });
+
+      if (result.survey) {
+        setSurvey(result.survey);
+      }
+
+      setEditingRepeatableGroups(false);
+      setMessage({ type: 'success', text: 'Directors/Founders 데이터가 저장되었습니다.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: '데이터 저장에 실패했습니다.' });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // 중복 제거된 응답 목록 반환 (동일 questionId는 마지막 값만 유지)
   const getUniqueAnswers = (answers: SurveyAnswer[]): SurveyAnswer[] => {
     const answersMap = new Map<string, SurveyAnswer>();
@@ -229,8 +346,32 @@ export default function SurveyDetail() {
     return Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null;
   };
 
+  // 손상된 반복 그룹 데이터인지 확인 ("[object Object]" 문자열)
+  const isCorruptedRepeatableData = (questionId: string, value: unknown): boolean => {
+    const repeatableGroups = ['directors', 'founders'];
+    if (!repeatableGroups.includes(questionId)) return false;
+    if (typeof value === 'string' && value.includes('[object Object]')) return true;
+    if (Array.isArray(value) && value.some(v => typeof v === 'string' && v.includes('[object Object]'))) return true;
+    return false;
+  };
+
   // 응답 값을 렌더링하는 함수
   const renderAnswerValue = (questionId: string, value: string | string[] | Array<Record<string, string>>) => {
+    // 손상된 데이터 체크
+    if (isCorruptedRepeatableData(questionId, value)) {
+      return (
+        <div className="corrupted-data-warning">
+          <div className="warning-icon">⚠️</div>
+          <div className="warning-content">
+            <strong>데이터 손상됨</strong>
+            <p>이 데이터는 이전 버전에서 잘못 저장되어 복구할 수 없습니다.</p>
+            <p>고객에게 설문을 다시 작성하도록 요청하거나, 아래 편집 기능으로 직접 입력해주세요.</p>
+            <p className="raw-value">원본 값: {String(value)}</p>
+          </div>
+        </div>
+      );
+    }
+
     // 반복 그룹 데이터 (directors, founders 등)
     if (isRepeatableGroupData(value)) {
       const groupName = questionId.charAt(0).toUpperCase() + questionId.slice(1);
@@ -427,6 +568,128 @@ export default function SurveyDetail() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+
+        {/* Directors & Founders 편집 섹션 */}
+        <div className="detail-section">
+          <div className="section-header">
+            <h3>Directors & Founders 데이터</h3>
+            {!editingRepeatableGroups ? (
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setEditingRepeatableGroups(true)}
+              >
+                편집
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setEditingRepeatableGroups(false)}
+                  disabled={isUpdating}
+                >
+                  취소
+                </button>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={handleSaveRepeatableGroups}
+                  disabled={isUpdating}
+                >
+                  {isUpdating ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {editingRepeatableGroups ? (
+            <div className="repeatable-groups-edit">
+              {/* Directors 편집 */}
+              <div className="repeatable-group-edit-section">
+                <h4>Directors (이사)</h4>
+                {repeatableGroups.directors.map((item, itemIndex) => (
+                  <div key={itemIndex} className="repeatable-group-item">
+                    <div className="repeatable-group-header">
+                      <strong>Director {itemIndex + 1}</strong>
+                      {repeatableGroups.directors.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleRemoveRepeatableItem('directors', itemIndex)}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                    <div className="repeatable-edit-fields">
+                      {DIRECTOR_FIELDS.map(field => (
+                        <div key={field} className="repeatable-edit-field">
+                          <label>Director{itemIndex + 1}{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                          <input
+                            type={field === 'email' ? 'email' : 'text'}
+                            value={item[field] || ''}
+                            onChange={(e) => handleRepeatableFieldChange('directors', itemIndex, field, e.target.value)}
+                            placeholder={field}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-outline btn-add-item"
+                  onClick={() => handleAddRepeatableItem('directors')}
+                >
+                  + Director 추가
+                </button>
+              </div>
+
+              {/* Founders 편집 */}
+              <div className="repeatable-group-edit-section">
+                <h4>Founders (주주)</h4>
+                {repeatableGroups.founders.map((item, itemIndex) => (
+                  <div key={itemIndex} className="repeatable-group-item">
+                    <div className="repeatable-group-header">
+                      <strong>Founder {itemIndex + 1}</strong>
+                      {repeatableGroups.founders.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleRemoveRepeatableItem('founders', itemIndex)}
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                    <div className="repeatable-edit-fields">
+                      {FOUNDER_FIELDS.map(field => (
+                        <div key={field} className="repeatable-edit-field">
+                          <label>Founder{itemIndex + 1}{field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                          <input
+                            type={field === 'email' ? 'email' : field === 'cash' ? 'number' : 'text'}
+                            value={item[field] || ''}
+                            onChange={(e) => handleRepeatableFieldChange('founders', itemIndex, field, e.target.value)}
+                            placeholder={field}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn btn-outline btn-add-item"
+                  onClick={() => handleAddRepeatableItem('founders')}
+                >
+                  + Founder 추가
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="section-description">
+              손상된 데이터나 누락된 Directors/Founders 정보를 직접 입력하려면 "편집" 버튼을 클릭하세요.
+            </p>
           )}
         </div>
 
