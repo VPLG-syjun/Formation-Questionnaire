@@ -250,6 +250,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 3. 각 템플릿 처리
     const documentResults: DocumentResult[] = [];
     const generatedFiles: Array<{ filename: string; buffer: Buffer }> = [];
+    const templateDebugInfo: Record<string, unknown> = {};
 
     for (const templateId of selectedTemplates) {
       try {
@@ -309,9 +310,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 디버깅: Founder 관련 변수 로깅
         const founderVars = Object.entries(variables)
-          .filter(([k]) => k.toLowerCase().includes('founder') || k.toLowerCase().includes('fmv'))
+          .filter(([k]) => k.toLowerCase().includes('founder') || k.toLowerCase().includes('fmv') || k.toLowerCase().includes('share'))
           .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {});
         console.log(`[DEBUG] Template ${templateId} (${template.displayName || template.name}) - Founder vars:`, JSON.stringify(founderVars, null, 2));
+
+        // 디버그 정보 저장
+        templateDebugInfo[templateId] = {
+          templateName: template.displayName || template.name,
+          mappingsCount: variableMappings.length,
+          calculatedMappings: calculatedMappings.map(m => ({ name: m.variableName, formula: m.formula })),
+          founderVars,
+        };
 
         // 3e. overrideVariables 적용 (우선순위 높음)
         variables = { ...variables, ...overrideVariables };
@@ -412,7 +421,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     survey.lastGenerationId = recordId;
     await client.hSet(SURVEYS_KEY, surveyId, JSON.stringify(survey));
 
-    // 9. 응답 반환
+    // 9. 응답 반환 (디버그 정보 포함)
     return res.status(200).json({
       success: true,
       documents: documentResults,
@@ -423,6 +432,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         total: selectedTemplates.length,
         successful: successfulDocs.length,
         failed: documentResults.filter(d => d.status === 'error').length,
+      },
+      // 디버그 정보 (문제 해결 후 제거 예정)
+      _debug: {
+        surveyKeys: Object.keys(survey),
+        hasAnswers: !!survey.answers,
+        answersCount: survey.answers?.length || 0,
+        hasFoundersDirect: !!survey.founders,
+        foundersInAnswers: survey.answers?.find((a: SurveyResponse) => a.questionId === 'founders') ? true : false,
+        foundersData: survey.answers?.find((a: SurveyResponse) => a.questionId === 'founders')?.value,
+        adminValues: survey.adminValues,
+        responsesQuestionIds: responses.map(r => r.questionId),
+        templateDebugInfo,
       },
     });
 
