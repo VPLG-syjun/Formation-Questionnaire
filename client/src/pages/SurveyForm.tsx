@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { questionSections, BASE_PRICE } from '../data/questions';
-import { Question, SurveyAnswer } from '../types/survey';
+import { Question, SurveyAnswer, RepeatableGroupItem, RepeatableField } from '../types/survey';
 import { createSurvey } from '../services/api';
 
 export default function SurveyForm() {
   const navigate = useNavigate();
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[] | RepeatableGroupItem[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,7 +58,7 @@ export default function SurveyForm() {
     return { breakdown, additionalTotal, total: BASE_PRICE + additionalTotal };
   }, [answers]);
 
-  const handleAnswer = (questionId: string, value: string | string[]) => {
+  const handleAnswer = (questionId: string, value: string | string[] | RepeatableGroupItem[]) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
     setErrors(prev => {
       const newErrors = { ...prev };
@@ -67,11 +67,83 @@ export default function SurveyForm() {
     });
   };
 
+  // 반복 그룹: 항목 추가
+  const handleAddGroupItem = (questionId: string, fields: RepeatableField[]) => {
+    const currentItems = (answers[questionId] as RepeatableGroupItem[]) || [];
+    const newItem: RepeatableGroupItem = {};
+    fields.forEach(field => {
+      newItem[field.id] = '';
+    });
+    handleAnswer(questionId, [...currentItems, newItem]);
+  };
+
+  // 반복 그룹: 항목 삭제
+  const handleRemoveGroupItem = (questionId: string, index: number) => {
+    const currentItems = (answers[questionId] as RepeatableGroupItem[]) || [];
+    const newItems = currentItems.filter((_, i) => i !== index);
+    handleAnswer(questionId, newItems);
+  };
+
+  // 반복 그룹: 필드 값 변경
+  const handleGroupFieldChange = (questionId: string, itemIndex: number, fieldId: string, value: string) => {
+    const currentItems = (answers[questionId] as RepeatableGroupItem[]) || [];
+    const newItems = [...currentItems];
+    newItems[itemIndex] = { ...newItems[itemIndex], [fieldId]: value };
+    handleAnswer(questionId, newItems);
+  };
+
+  // 반복 그룹 초기화 (첫 항목 생성)
+  const initializeGroupIfNeeded = (question: Question) => {
+    if (question.type === 'repeatable_group' && !answers[question.id]) {
+      const fields = question.groupFields || [];
+      const initialItem: RepeatableGroupItem = {};
+      fields.forEach(field => {
+        initialItem[field.id] = '';
+      });
+      setAnswers(prev => ({ ...prev, [question.id]: [initialItem] }));
+    }
+  };
+
   const validateSection = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     visibleQuestions.forEach(question => {
       const answer = answers[question.id];
+
+      // 반복 그룹 검증
+      if (question.type === 'repeatable_group') {
+        const items = answer as RepeatableGroupItem[] || [];
+        const minItems = question.minItems || 1;
+
+        if (question.required && items.length < minItems) {
+          newErrors[question.id] = `최소 ${minItems}개 이상의 ${question.itemLabel || '항목'}이 필요합니다.`;
+          return;
+        }
+
+        // 각 항목의 필수 필드 검증
+        let hasFieldError = false;
+        items.forEach((item, index) => {
+          question.groupFields?.forEach(field => {
+            if (field.required && !item[field.id]?.trim()) {
+              newErrors[`${question.id}_${index}_${field.id}`] = '필수 항목입니다.';
+              hasFieldError = true;
+            }
+            // 이메일 형식 검증
+            if (field.type === 'email' && item[field.id]) {
+              const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+              if (!emailPattern.test(item[field.id])) {
+                newErrors[`${question.id}_${index}_${field.id}`] = '올바른 이메일 형식을 입력해주세요.';
+                hasFieldError = true;
+              }
+            }
+          });
+        });
+
+        if (hasFieldError) {
+          newErrors[question.id] = '모든 필수 항목을 입력해주세요.';
+        }
+        return;
+      }
 
       if (question.required) {
         if (!answer || (Array.isArray(answer) && answer.length === 0)) {
@@ -162,6 +234,11 @@ export default function SurveyForm() {
   };
 
   const renderQuestion = (question: Question) => {
+    // 반복 그룹 초기화
+    if (question.type === 'repeatable_group') {
+      initializeGroupIfNeeded(question);
+    }
+
     const value = answers[question.id] || '';
     const error = errors[question.id];
     const hasPriceEffect = question.priceEffect && question.priceEffect.values;
@@ -185,7 +262,7 @@ export default function SurveyForm() {
     );
   };
 
-  const renderInput = (question: Question, value: string | string[], _error?: string) => {
+  const renderInput = (question: Question, value: string | string[] | RepeatableGroupItem[], _error?: string) => {
     switch (question.type) {
       case 'text':
       case 'email':
@@ -287,6 +364,80 @@ export default function SurveyForm() {
                 )}
               </label>
             ))}
+          </div>
+        );
+
+      case 'repeatable_group':
+        const groupItems = (value as unknown as RepeatableGroupItem[]) || [];
+        const fields = question.groupFields || [];
+        const maxItems = question.maxItems || 10;
+        const minItems = question.minItems || 1;
+        const itemLabel = question.itemLabel || '항목';
+
+        return (
+          <div className="repeatable-group">
+            {groupItems.map((item, itemIndex) => (
+              <div key={itemIndex} className="repeatable-group-item">
+                <div className="repeatable-group-header">
+                  <span className="repeatable-group-title">
+                    {itemLabel} {itemIndex + 1}
+                  </span>
+                  {groupItems.length > minItems && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleRemoveGroupItem(question.id, itemIndex)}
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
+                <div className="repeatable-group-fields">
+                  {fields.map(field => {
+                    const fieldError = errors[`${question.id}_${itemIndex}_${field.id}`];
+                    return (
+                      <div key={field.id} className={`repeatable-field ${fieldError ? 'has-error' : ''}`}>
+                        <label className="repeatable-field-label">
+                          {field.label}
+                          {field.required && <span className="required">*</span>}
+                        </label>
+                        {field.type === 'dropdown' ? (
+                          <select
+                            value={item[field.id] || ''}
+                            onChange={e => handleGroupFieldChange(question.id, itemIndex, field.id, e.target.value)}
+                          >
+                            <option value="">선택해주세요</option>
+                            {field.options?.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={field.type}
+                            value={item[field.id] || ''}
+                            onChange={e => handleGroupFieldChange(question.id, itemIndex, field.id, e.target.value)}
+                            placeholder={field.placeholder}
+                          />
+                        )}
+                        {fieldError && (
+                          <p className="field-error">{fieldError}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {groupItems.length < maxItems && (
+              <button
+                type="button"
+                className="btn btn-outline btn-add-item"
+                onClick={() => handleAddGroupItem(question.id, fields)}
+              >
+                + {question.addButtonText || `${itemLabel} 추가`}
+              </button>
+            )}
           </div>
         );
 

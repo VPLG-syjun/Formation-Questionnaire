@@ -1,5 +1,20 @@
 // 질문 유형 정의
-export type QuestionType = 'text' | 'email' | 'tel' | 'number' | 'date' | 'yesno' | 'dropdown' | 'radio' | 'checkbox';
+export type QuestionType = 'text' | 'email' | 'tel' | 'number' | 'date' | 'yesno' | 'dropdown' | 'radio' | 'checkbox' | 'repeatable_group';
+
+// 반복 그룹 내 필드 정의
+export interface RepeatableField {
+  id: string;           // 필드 ID (예: 'name', 'address', 'email')
+  type: 'text' | 'email' | 'tel' | 'number' | 'date' | 'dropdown';
+  label: string;        // 필드 라벨
+  placeholder?: string;
+  required: boolean;
+  options?: QuestionOption[]; // dropdown용
+}
+
+// 반복 그룹 항목 데이터
+export interface RepeatableGroupItem {
+  [fieldId: string]: string;
+}
 
 // 선택 옵션 (dropdown, radio, checkbox용)
 export interface QuestionOption {
@@ -36,6 +51,13 @@ export interface Question {
     max?: number;
   };
   documentField?: string; // DOCX 템플릿에서 사용할 필드명
+
+  // repeatable_group 전용 속성
+  groupFields?: RepeatableField[];  // 그룹 내 필드들
+  minItems?: number;                // 최소 항목 수 (기본: 1)
+  maxItems?: number;                // 최대 항목 수 (기본: 10)
+  addButtonText?: string;           // 추가 버튼 텍스트
+  itemLabel?: string;               // 각 항목 라벨 (예: '이사', '창업자')
 }
 
 // 질문 그룹 (섹션)
@@ -49,7 +71,7 @@ export interface QuestionSection {
 // 설문 응답
 export interface SurveyAnswer {
   questionId: string;
-  value: string | string[];
+  value: string | string[] | RepeatableGroupItem[];
   price?: number;
 }
 

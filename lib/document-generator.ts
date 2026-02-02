@@ -784,7 +784,54 @@ export function transformSurveyToVariables(
     result['SIGNDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
   }
 
-  // 4. 관리자 설정 값 (Authorized Shares, Par Value, Fair Market Value) 처리
+  // 4. 반복 그룹 데이터 처리 (directors, founders 등)
+  for (const response of responses) {
+    const value = response.value;
+
+    // 배열이면서 객체 배열인 경우 (반복 그룹)
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+      const groupItems = value as Array<Record<string, string>>;
+      const baseName = response.questionId;
+
+      // 그룹 개수
+      result[`${baseName}Count`] = groupItems.length.toString();
+
+      // 조건부 플래그
+      const capitalizedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+      result[`hasMultiple${capitalizedName}`] = groupItems.length >= 2 ? 'true' : '';
+      result[`hasSingle${capitalizedName}`] = groupItems.length === 1 ? 'true' : '';
+
+      // 각 필드별 배열 생성 (예: directorsName, directorsEmail 등)
+      const fieldNames = Object.keys(groupItems[0] || {});
+      for (const fieldName of fieldNames) {
+        const fieldValues = groupItems.map(item => item[fieldName] || '');
+        const fieldCapitalized = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+
+        // 필드별 포맷팅된 목록
+        result[`${baseName}${fieldCapitalized}Formatted`] = formatListAnd(fieldValues);
+        result[`${baseName}${fieldCapitalized}List`] = formatListComma(fieldValues);
+
+        // 개별 항목 접근 (1-indexed, 기존 템플릿 호환)
+        fieldValues.forEach((val, idx) => {
+          // director1Name, director2Name 형식 (기존 호환)
+          result[`${baseName.slice(0, -1)}${idx + 1}${fieldCapitalized}`] = val;
+          // directors1Name, directors2Name 형식 (새 형식)
+          result[`${baseName}${idx + 1}${fieldCapitalized}`] = val;
+        });
+      }
+
+      // 반복문용 배열 데이터 (docxtemplater loop 용)
+      // 문자열이 아닌 배열은 별도로 저장 (나중에 docxtemplater에 전달)
+      (result as Record<string, unknown>)[baseName] = groupItems.map((item, index) => ({
+        ...item,
+        index: index + 1,
+        isFirst: index === 0,
+        isLast: index === groupItems.length - 1,
+      }));
+    }
+  }
+
+  // 5. 관리자 설정 값 (Authorized Shares, Par Value, Fair Market Value) 처리
   const authSharesResponse = responses.find(r => r.questionId === '__authorizedShares');
   if (authSharesResponse?.value) {
     const authSharesValue = Array.isArray(authSharesResponse.value) ? authSharesResponse.value[0] : authSharesResponse.value;
