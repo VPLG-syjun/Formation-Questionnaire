@@ -181,9 +181,8 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
 
         response.variables.forEach(v => {
           // Check if this variable is mapped to an admin value
-          const adminValue = adminValueMap[v.questionId];
-          if (adminValue) {
-            initialValues[v.variableName] = adminValue;
+          if (v.questionId && adminValueMap[v.questionId]) {
+            initialValues[v.variableName] = adminValueMap[v.questionId]!;
           } else if (v.defaultValue) {
             initialValues[v.variableName] = v.defaultValue;
           }
