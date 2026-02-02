@@ -37,6 +37,7 @@ export interface RuleCondition {
   value: string;
   valueType?: 'literal' | 'question';  // 'literal' = 직접 입력값, 'question' = 다른 질문 참조
   valueQuestionId?: string;            // valueType이 'question'일 때 참조할 질문 ID
+  sourceType?: 'question' | 'computed';  // 'question' = 설문 질문, 'computed' = 계산된 변수 (directorsCount 등)
 }
 
 export interface SelectionRule {
@@ -1107,18 +1108,70 @@ export function validateVariables(
 // 템플릿 선택 로직
 // ============================================
 
+// 계산된 변수로 사용 가능한 변수 목록 (UI에서 선택 시 사용)
+export const COMPUTED_VARIABLES = [
+  { id: 'directorsCount', label: 'Directors Count (이사 수)', group: 'directors' },
+  { id: 'foundersCount', label: 'Founders Count (주주 수)', group: 'founders' },
+  { id: 'hasMultipleDirectors', label: 'Has Multiple Directors (이사 2명 이상)', group: 'directors' },
+  { id: 'hasSingleDirectors', label: 'Has Single Director (이사 1명)', group: 'directors' },
+  { id: 'hasMultipleFounders', label: 'Has Multiple Founders (주주 2명 이상)', group: 'founders' },
+  { id: 'hasSingleFounders', label: 'Has Single Founder (주주 1명)', group: 'founders' },
+];
+
+/**
+ * 설문 응답에서 계산된 변수 추출
+ * @param responses - 설문 답변 배열
+ * @returns 계산된 변수 객체 (directorsCount, foundersCount 등)
+ */
+export function computeVariablesFromResponses(
+  responses: SurveyResponse[]
+): Record<string, string | number> {
+  const computed: Record<string, string | number> = {};
+
+  // 반복 그룹 데이터 처리 (directors, founders 등)
+  for (const response of responses) {
+    const value = response.value;
+
+    // 배열이면서 객체 배열인 경우 (반복 그룹)
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+      const groupItems = value as Array<Record<string, string>>;
+      const baseName = response.questionId;
+
+      // 그룹 개수
+      computed[`${baseName}Count`] = groupItems.length;
+
+      // 조건부 플래그
+      const capitalizedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
+      computed[`hasMultiple${capitalizedName}`] = groupItems.length >= 2 ? 'true' : '';
+      computed[`hasSingle${capitalizedName}`] = groupItems.length === 1 ? 'true' : '';
+    }
+  }
+
+  return computed;
+}
+
 /**
  * 단일 조건 평가
  * @param condition - 평가할 조건
  * @param responses - 설문 답변 배열
+ * @param computedVariables - 계산된 변수 (directorsCount, foundersCount 등)
  * @returns 조건 충족 여부
  */
 export function evaluateCondition(
   condition: RuleCondition,
-  responses: SurveyResponse[]
+  responses: SurveyResponse[],
+  computedVariables?: Record<string, string | number>
 ): boolean {
-  const response = responses.find(r => r.questionId === condition.questionId);
-  const actualValue = response?.value;
+  let actualValue: string | string[] | Array<Record<string, string>> | number | undefined;
+
+  // 계산된 변수인 경우 (directorsCount, foundersCount 등)
+  if (condition.sourceType === 'computed' && computedVariables) {
+    actualValue = computedVariables[condition.questionId];
+  } else {
+    // 일반 설문 질문인 경우
+    const response = responses.find(r => r.questionId === condition.questionId);
+    actualValue = response?.value;
+  }
 
   // 답변이 없는 경우
   if (actualValue === undefined || actualValue === null) {
@@ -1205,11 +1258,13 @@ export function evaluateCondition(
  * 템플릿의 규칙들을 평가하고 점수 반환
  * @param template - 평가할 템플릿
  * @param responses - 설문 답변 배열
+ * @param computedVariables - 계산된 변수 (directorsCount, foundersCount 등)
  * @returns 평가 결과 (0.0 ~ 1.0 점수 포함)
  */
 export function evaluateRules(
   template: Template,
-  responses: SurveyResponse[]
+  responses: SurveyResponse[],
+  computedVariables?: Record<string, string | number>
 ): RuleEvaluationResult {
   const rules = template.rules || [];
 
@@ -1267,12 +1322,12 @@ export function evaluateRules(
     if (rule.logicalOperator === 'OR') {
       // OR: 하나라도 충족되면 true
       conditionsMet = rule.conditions.some(condition =>
-        evaluateCondition(condition, responses)
+        evaluateCondition(condition, responses, computedVariables)
       );
     } else {
       // AND (기본값): 모든 조건이 충족되어야 true
       conditionsMet = rule.conditions.every(condition =>
-        evaluateCondition(condition, responses)
+        evaluateCondition(condition, responses, computedVariables)
       );
     }
 
@@ -1307,6 +1362,7 @@ export function evaluateRules(
  *
  * @param responses - 설문 답변 배열
  * @param templates - 전체 템플릿 배열
+ * @param computedVariables - 계산된 변수 (directorsCount, foundersCount 등)
  * @returns 분류된 템플릿 목록 (required, suggested, optional)
  *
  * 분류 기준:
@@ -1316,7 +1372,8 @@ export function evaluateRules(
  */
 export function selectTemplates(
   responses: SurveyResponse[],
-  templates: Template[]
+  templates: Template[],
+  computedVariables?: Record<string, string | number>
 ): TemplateSelection {
   const required: Template[] = [];
   const suggested: Template[] = [];
@@ -1326,7 +1383,7 @@ export function selectTemplates(
   const activeTemplates = templates.filter(t => t.isActive);
 
   for (const template of activeTemplates) {
-    const evaluation = evaluateRules(template, responses);
+    const evaluation = evaluateRules(template, responses, computedVariables);
 
     // 항상 사용 → required
     if (evaluation.isAlwaysInclude) {
@@ -1373,7 +1430,8 @@ export function selectTemplates(
  */
 export function getTemplateEvaluationDetails(
   template: Template,
-  responses: SurveyResponse[]
+  responses: SurveyResponse[],
+  computedVariables?: Record<string, string | number>
 ): {
   evaluation: RuleEvaluationResult;
   conditionDetails: Array<{
@@ -1383,7 +1441,7 @@ export function getTemplateEvaluationDetails(
     actualValue: string | undefined;
   }>;
 } {
-  const evaluation = evaluateRules(template, responses);
+  const evaluation = evaluateRules(template, responses, computedVariables);
   const conditionDetails: Array<{
     ruleIndex: number;
     condition: RuleCondition;
@@ -1396,15 +1454,23 @@ export function getTemplateEvaluationDetails(
     if (!rule.conditions) return;
 
     rule.conditions.forEach(condition => {
-      const response = responses.find(r => r.questionId === condition.questionId);
-      const actualValue = response?.value;
-      const isMet = evaluateCondition(condition, responses);
+      let actualValue: string | string[] | Array<Record<string, string>> | number | undefined;
+
+      // 계산된 변수인 경우
+      if (condition.sourceType === 'computed' && computedVariables) {
+        actualValue = computedVariables[condition.questionId];
+      } else {
+        const response = responses.find(r => r.questionId === condition.questionId);
+        actualValue = response?.value;
+      }
+
+      const isMet = evaluateCondition(condition, responses, computedVariables);
 
       conditionDetails.push({
         ruleIndex,
         condition,
         isMet,
-        actualValue: Array.isArray(actualValue) ? actualValue.join(',') : actualValue,
+        actualValue: Array.isArray(actualValue) ? actualValue.join(',') : String(actualValue ?? ''),
       });
     });
   });
@@ -1451,6 +1517,8 @@ export default {
   evaluateCondition,
   evaluateRules,
   getTemplateEvaluationDetails,
+  computeVariablesFromResponses,
+  COMPUTED_VARIABLES,
 
   // 날짜 유틸리티
   formatDate,

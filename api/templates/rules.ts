@@ -52,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             id,
             templateId,
             conditions: r.conditions || [],
+            logicalOperator: r.logicalOperator || 'AND',
             priority: r.priority ?? 1,
             isAlwaysInclude: r.isAlwaysInclude || false,
             isManualOnly: r.isManualOnly || false,

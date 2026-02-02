@@ -28,6 +28,7 @@ interface RuleCondition {
   value: string;
   valueType?: 'literal' | 'question';  // 'literal' = 직접 입력, 'question' = 다른 질문 참조
   valueQuestionId?: string;            // valueType이 'question'일 때 참조할 질문 ID
+  sourceType?: 'question' | 'computed';  // 'question' = 설문 질문, 'computed' = 계산된 변수
 }
 
 interface SelectionRule {
@@ -51,6 +52,16 @@ const OPERATORS = [
   { value: '>=', label: '크거나 같다 (>=)' },
   { value: '<', label: '작다 (<)' },
   { value: '<=', label: '작거나 같다 (<=)' },
+];
+
+// 계산된 변수 목록 (선택 규칙 조건으로 사용 가능)
+const COMPUTED_VARIABLES = [
+  { id: 'directorsCount', label: 'Directors Count (이사 수)', type: 'number' },
+  { id: 'foundersCount', label: 'Founders Count (주주 수)', type: 'number' },
+  { id: 'hasMultipleDirectors', label: 'Has Multiple Directors (이사 2명 이상)', type: 'boolean' },
+  { id: 'hasSingleDirectors', label: 'Has Single Director (이사 1명)', type: 'boolean' },
+  { id: 'hasMultipleFounders', label: 'Has Multiple Founders (주주 2명 이상)', type: 'boolean' },
+  { id: 'hasSingleFounders', label: 'Has Single Founder (주주 1명)', type: 'boolean' },
 ];
 
 const DATA_TYPES = [
@@ -302,7 +313,7 @@ export default function TemplateEdit() {
   // 규칙 관리 함수들
   const addRule = () => {
     const newRule: SelectionRule = {
-      conditions: [{ questionId: '', operator: '==', value: '', valueType: 'literal' }],
+      conditions: [{ questionId: '', operator: '==', value: '', valueType: 'literal', sourceType: 'question' }],
       logicalOperator: 'AND',
       priority: rules.length + 1,
       isAlwaysInclude: false,
@@ -329,7 +340,7 @@ export default function TemplateEdit() {
 
   const addCondition = (ruleIndex: number) => {
     const updated = [...rules];
-    updated[ruleIndex].conditions.push({ questionId: '', operator: '==', value: '', valueType: 'literal' });
+    updated[ruleIndex].conditions.push({ questionId: '', operator: '==', value: '', valueType: 'literal', sourceType: 'question' });
     setRules(updated);
   };
 
@@ -747,22 +758,61 @@ export default function TemplateEdit() {
                             <span className="condition-connector">{rule.logicalOperator || 'AND'}</span>
                           )}
                           <div className="condition-fields">
+                            {/* 소스 타입 선택: 설문 질문 vs 계산된 변수 */}
                             <select
-                              value={condition.questionId}
-                              onChange={(e) => updateCondition(ruleIndex, condIndex, 'questionId', e.target.value)}
-                              className="condition-select"
+                              value={condition.sourceType || 'question'}
+                              onChange={(e) => {
+                                const updated = [...rules];
+                                updated[ruleIndex].conditions[condIndex] = {
+                                  ...condition,
+                                  sourceType: e.target.value as 'question' | 'computed',
+                                  questionId: '',  // 소스 변경 시 선택 초기화
+                                };
+                                setRules(updated);
+                              }}
+                              className="condition-source-type"
+                              style={{ minWidth: '110px' }}
                             >
-                              <option value="">질문 선택...</option>
-                              {questionSections.map(section => (
-                                <optgroup key={section.id} label={section.title}>
-                                  {section.questions.map(q => (
-                                    <option key={q.id} value={q.id}>
-                                      {q.text.length > 35 ? q.text.substring(0, 35) + '...' : q.text}
-                                    </option>
+                              <option value="question">설문 질문</option>
+                              <option value="computed">계산된 변수</option>
+                            </select>
+                            {/* 질문 또는 계산된 변수 선택 */}
+                            {(condition.sourceType || 'question') === 'question' ? (
+                              <select
+                                value={condition.questionId}
+                                onChange={(e) => updateCondition(ruleIndex, condIndex, 'questionId', e.target.value)}
+                                className="condition-select"
+                              >
+                                <option value="">질문 선택...</option>
+                                {questionSections.map(section => (
+                                  <optgroup key={section.id} label={section.title}>
+                                    {section.questions.map(q => (
+                                      <option key={q.id} value={q.id}>
+                                        {q.text.length > 35 ? q.text.substring(0, 35) + '...' : q.text}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            ) : (
+                              <select
+                                value={condition.questionId}
+                                onChange={(e) => updateCondition(ruleIndex, condIndex, 'questionId', e.target.value)}
+                                className="condition-select"
+                              >
+                                <option value="">계산된 변수 선택...</option>
+                                <optgroup label="Directors (이사)">
+                                  {COMPUTED_VARIABLES.filter(v => v.id.toLowerCase().includes('director')).map(v => (
+                                    <option key={v.id} value={v.id}>{v.label}</option>
                                   ))}
                                 </optgroup>
-                              ))}
-                            </select>
+                                <optgroup label="Founders (주주)">
+                                  {COMPUTED_VARIABLES.filter(v => v.id.toLowerCase().includes('founder')).map(v => (
+                                    <option key={v.id} value={v.id}>{v.label}</option>
+                                  ))}
+                                </optgroup>
+                              </select>
+                            )}
                             <select
                               value={condition.operator}
                               onChange={(e) => updateCondition(ruleIndex, condIndex, 'operator', e.target.value)}

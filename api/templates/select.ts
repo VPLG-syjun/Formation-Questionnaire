@@ -3,6 +3,7 @@ import { createClient } from 'redis';
 import {
   selectTemplates,
   evaluateRules,
+  computeVariablesFromResponses,
   SurveyResponse,
   Template,
   SelectionRule,
@@ -94,6 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return {
             id: r.id,
             conditions: r.conditions as RuleCondition[],
+            logicalOperator: r.logicalOperator || 'AND',
             priority: r.priority || 1,
             isAlwaysInclude: r.isAlwaysInclude || false,
             isManualOnly: r.isManualOnly || false,
@@ -106,6 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return {
             id: r.id,
             conditions: [],
+            logicalOperator: 'AND',
             priority: r.priority || 1,
             isAlwaysInclude: true,
             isManualOnly: false,
@@ -123,6 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return {
           id: r.id,
           conditions,
+          logicalOperator: 'AND',
           priority: r.priority || 100,
           isAlwaysInclude: false,
           isManualOnly: false,
@@ -139,12 +143,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     });
 
+    // 계산된 변수 생성 (directorsCount, foundersCount 등)
+    const computedVariables = computeVariablesFromResponses(responses);
+
     // 템플릿 선택 로직 실행
-    const selection = selectTemplates(responses, templates);
+    const selection = selectTemplates(responses, templates, computedVariables);
 
     // 디버깅을 위한 규칙 평가 결과 (개발 중에만 사용)
     const debugEvaluations = templates.map((t) => {
-      const evaluation = evaluateRules(t, responses);
+      const evaluation = evaluateRules(t, responses, computedVariables);
       return {
         templateId: t.id,
         templateName: t.displayName || t.name,
@@ -167,6 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           questionId: r.questionId,
           value: r.value,
         })),
+        computedVariables,  // 디버깅용으로 계산된 변수도 포함
         templateEvaluations: debugEvaluations,
       },
       stats: {
