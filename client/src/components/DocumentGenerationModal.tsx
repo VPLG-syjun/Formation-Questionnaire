@@ -6,9 +6,11 @@ import {
   generateDocuments,
   getDocumentDownloadURL,
   getManualVariables,
+  fetchSurvey,
   DocumentResult,
   ManualVariable,
 } from '../services/api';
+import { Survey } from '../types/survey';
 import TemplatePreviewModal from './TemplatePreviewModal';
 
 interface Props {
@@ -33,6 +35,9 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
   const [manualVariables, setManualVariables] = useState<ManualVariable[]>([]);
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
   const [loadingManualVars, setLoadingManualVars] = useState(false);
+
+  // Survey data for admin values
+  const [survey, setSurvey] = useState<Survey | null>(null);
 
   // Generation progress
   const [generatingTemplates, setGeneratingTemplates] = useState<string[]>([]);
@@ -80,6 +85,10 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
     setError('');
 
     try {
+      // Load survey data for admin values
+      const surveyData = await fetchSurvey(surveyId);
+      setSurvey(surveyData);
+
       const selection = await selectTemplates(surveyId);
       setTemplateSelection(selection);
 
@@ -158,10 +167,24 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
 
       if (response.variables.length > 0) {
         setManualVariables(response.variables);
-        // Initialize values with defaults
+        // Initialize values with defaults and admin values from survey
         const initialValues: Record<string, string> = {};
+
+        // Admin value mapping
+        const adminValueMap: Record<string, string | undefined> = {
+          '__authorizedShares': survey?.adminValues?.authorizedShares,
+          '__parValue': survey?.adminValues?.parValue,
+          '__fairMarketValue': survey?.adminValues?.fairMarketValue,
+          '__COIDate': survey?.adminDates?.COIDate,
+          '__SIGNDate': survey?.adminDates?.SIGNDate,
+        };
+
         response.variables.forEach(v => {
-          if (v.defaultValue) {
+          // Check if this variable is mapped to an admin value
+          const adminValue = adminValueMap[v.questionId];
+          if (adminValue) {
+            initialValues[v.variableName] = adminValue;
+          } else if (v.defaultValue) {
             initialValues[v.variableName] = v.defaultValue;
           }
         });

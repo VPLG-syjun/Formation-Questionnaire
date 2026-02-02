@@ -162,6 +162,8 @@ export interface ManualVariable {
   required: boolean;
   defaultValue?: string;
   usedInTemplates: string[];
+  sourceType?: 'manual' | 'admin';  // 'manual' = 직접 입력, 'admin' = 관리자 설정값
+  questionId?: string;
 }
 
 export interface ManualVariablesResponse {
