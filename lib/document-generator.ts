@@ -871,6 +871,11 @@ export function transformSurveyToVariables(
           result[`${singularCapitalized}${idx + 1}${fieldCapitalized}`] = val;
           // founders1Cash (복수형 소문자)
           result[`${baseName}${idx + 1}${fieldCapitalized}`] = val;
+
+          // 디버그 로깅: Cash 필드인 경우 로그
+          if (fieldName.toLowerCase() === 'cash') {
+            console.log(`[transformSurveyToVariables] Set ${singularCapitalized}${idx + 1}${fieldCapitalized} = "${val}"`);
+          }
         });
       }
 
@@ -1235,6 +1240,44 @@ export function transformSurveyToVariables(
       result[variableKey] = mapping.defaultValue;
     }
   }
+
+  // 7. Fallback 계산: Founder1Share가 없으면 자동 계산 시도
+  if (!result['Founder1Share'] && result['Founder1Cash'] && result['FMV']) {
+    console.log('[transformSurveyToVariables] Step 7: Fallback calculation for Founder1Share');
+    const founder1CashNum = parseFloat((result['Founder1Cash'] || '0').replace(/[$,]/g, ''));
+    const fmvNum = parseFloat((result['FMV'] || '0').replace(/[$,]/g, ''));
+
+    console.log(`[transformSurveyToVariables] Fallback: Founder1Cash=${founder1CashNum}, FMV=${fmvNum}`);
+
+    if (!isNaN(founder1CashNum) && !isNaN(fmvNum) && fmvNum !== 0) {
+      const shareCount = founder1CashNum / fmvNum;
+      result['Founder1Share'] = formatNumberWithComma(shareCount);
+      console.log(`[transformSurveyToVariables] Fallback: Founder1Share = ${result['Founder1Share']}`);
+    }
+  }
+
+  // 추가 Founder들에 대한 Share 계산 (Founder2Share, Founder3Share 등)
+  for (let i = 2; i <= 9; i++) {
+    const cashKey = `Founder${i}Cash`;
+    const shareKey = `Founder${i}Share`;
+
+    if (!result[shareKey] && result[cashKey] && result['FMV']) {
+      const founderCashNum = parseFloat((result[cashKey] || '0').replace(/[$,]/g, ''));
+      const fmvNum = parseFloat((result['FMV'] || '0').replace(/[$,]/g, ''));
+
+      if (!isNaN(founderCashNum) && !isNaN(fmvNum) && fmvNum !== 0 && founderCashNum > 0) {
+        const shareCount = founderCashNum / fmvNum;
+        result[shareKey] = formatNumberWithComma(shareCount);
+        console.log(`[transformSurveyToVariables] Fallback: ${shareKey} = ${result[shareKey]}`);
+      }
+    }
+  }
+
+  console.log('[transformSurveyToVariables] Final result (selected vars):', {
+    Founder1Cash: result['Founder1Cash'],
+    Founder1Share: result['Founder1Share'],
+    FMV: result['FMV'],
+  });
 
   return result;
 }
