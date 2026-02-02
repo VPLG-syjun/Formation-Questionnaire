@@ -93,6 +93,14 @@ function generateDocument(
     paragraphLoop: true,
     linebreaks: true,
     delimiters: { start: '{', end: '}' },
+    // 누락된 변수 처리: undefined 대신 빈 문자열 반환 + 로깅
+    nullGetter: (part: { module?: string; value?: string }) => {
+      // 루프/조건 태그가 아닌 일반 변수만 로깅
+      if (!part.module) {
+        console.warn(`[WARN] Missing variable: ${part.value}`);
+      }
+      return '';
+    },
   });
 
   doc.render(variables);
