@@ -165,22 +165,32 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
       const templateIds = Array.from(selectedIds);
       const response = await getManualVariables(templateIds);
 
-      if (response.variables.length > 0) {
-        setManualVariables(response.variables);
-        // Initialize values with defaults and admin values from survey
+      // Admin value mapping - map questionId to actual survey values
+      const adminValueMap: Record<string, string | undefined> = {
+        '__authorizedShares': survey?.adminValues?.authorizedShares,
+        '__parValue': survey?.adminValues?.parValue,
+        '__fairMarketValue': survey?.adminValues?.fairMarketValue,
+        '__COIDate': survey?.adminDates?.COIDate,
+        '__SIGNDate': survey?.adminDates?.SIGNDate,
+      };
+
+      // Filter out admin variables that already have values set
+      // These don't need manual input since they're already configured
+      const filteredVariables = response.variables.filter(v => {
+        // If it's an admin-type variable and already has a value, skip it
+        if (v.sourceType === 'admin' && v.questionId && adminValueMap[v.questionId]) {
+          return false;
+        }
+        return true;
+      });
+
+      if (filteredVariables.length > 0) {
+        setManualVariables(filteredVariables);
+        // Initialize values with defaults
         const initialValues: Record<string, string> = {};
 
-        // Admin value mapping
-        const adminValueMap: Record<string, string | undefined> = {
-          '__authorizedShares': survey?.adminValues?.authorizedShares,
-          '__parValue': survey?.adminValues?.parValue,
-          '__fairMarketValue': survey?.adminValues?.fairMarketValue,
-          '__COIDate': survey?.adminDates?.COIDate,
-          '__SIGNDate': survey?.adminDates?.SIGNDate,
-        };
-
-        response.variables.forEach(v => {
-          // Check if this variable is mapped to an admin value
+        filteredVariables.forEach(v => {
+          // Check if this variable is mapped to an admin value (shouldn't happen after filtering, but just in case)
           if (v.questionId && adminValueMap[v.questionId]) {
             initialValues[v.variableName] = adminValueMap[v.questionId]!;
           } else if (v.defaultValue) {

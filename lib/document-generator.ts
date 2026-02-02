@@ -917,6 +917,8 @@ export function transformSurveyToVariables(
 
     result['fairMarketValue'] = fmvVal;
     result['fairMarketValueDollar'] = '$' + fmvVal;
+    // FMV is a common alias used in templates (CSPA2 등)
+    result['FMV'] = '$' + fmvVal;
   }
 
   // 5. 매핑된 변수 처리 (계산 변수 제외)
