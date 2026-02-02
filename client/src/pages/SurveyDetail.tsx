@@ -224,6 +224,50 @@ export default function SurveyDetail() {
     return <span className={`status-badge ${className}`}>{text}</span>;
   };
 
+  // 반복 그룹 데이터인지 확인 (객체 배열)
+  const isRepeatableGroupData = (value: unknown): value is Array<Record<string, string>> => {
+    return Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null;
+  };
+
+  // 응답 값을 렌더링하는 함수
+  const renderAnswerValue = (questionId: string, value: string | string[] | Array<Record<string, string>>) => {
+    // 반복 그룹 데이터 (directors, founders 등)
+    if (isRepeatableGroupData(value)) {
+      const groupName = questionId.charAt(0).toUpperCase() + questionId.slice(1);
+      const singularName = groupName.endsWith('s') ? groupName.slice(0, -1) : groupName;
+
+      return (
+        <div className="repeatable-group-display">
+          {value.map((item, index) => (
+            <div key={index} className="repeatable-group-item">
+              <div className="repeatable-group-header">
+                <strong>{singularName} {index + 1}</strong>
+              </div>
+              <div className="repeatable-group-fields">
+                {Object.entries(item).map(([fieldKey, fieldValue]) => (
+                  <div key={fieldKey} className="repeatable-group-field">
+                    <span className="field-label">
+                      {singularName}{index + 1}{fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1)}:
+                    </span>
+                    <span className="field-value">{fieldValue || '-'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 일반 배열 (다중 선택 등)
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+
+    // 단일 값
+    return value;
+  };
+
   if (loading) {
     return <div className="loading">로딩 중...</div>;
   }
@@ -341,7 +385,15 @@ export default function SurveyDetail() {
               {editedAnswers.map((answer, index) => (
                 <div key={index} className="answer-edit-item">
                   <label className="answer-edit-label">{answer.questionId}</label>
-                  {Array.isArray(answer.value) ? (
+                  {isRepeatableGroupData(answer.value) ? (
+                    // 반복 그룹 편집 (읽기 전용으로 표시 - 설문에서만 수정 가능)
+                    <div className="repeatable-group-edit-notice">
+                      <div style={{ color: 'var(--color-gray-500)', fontSize: '0.9rem', marginBottom: '8px' }}>
+                        ※ 반복 그룹 데이터는 설문에서 직접 수정해주세요.
+                      </div>
+                      {renderAnswerValue(answer.questionId, answer.value)}
+                    </div>
+                  ) : Array.isArray(answer.value) ? (
                     <textarea
                       className="answer-edit-input"
                       value={answer.value.join('\n')}
@@ -358,7 +410,7 @@ export default function SurveyDetail() {
                     <input
                       type="text"
                       className="answer-edit-input"
-                      value={answer.value}
+                      value={answer.value as string}
                       onChange={(e) => handleAnswerChange(index, e.target.value)}
                     />
                   )}
@@ -370,9 +422,9 @@ export default function SurveyDetail() {
             getUniqueAnswers(survey.answers || []).map((answer, index) => (
               <div key={index} className="question-card">
                 <h4>{answer.questionId}</h4>
-                <p style={{ marginTop: '10px', color: '#374151' }}>
-                  {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
-                </p>
+                <div style={{ marginTop: '10px', color: '#374151' }}>
+                  {renderAnswerValue(answer.questionId, answer.value)}
+                </div>
               </div>
             ))
           )}
