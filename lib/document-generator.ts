@@ -758,7 +758,18 @@ export function transformSurveyToVariables(
   const coiDateResponse = responses.find(r => r.questionId === '__COIDate');
   if (coiDateResponse?.value) {
     const rawValue = coiDateResponse.value;
-    const coiDateValue = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
+
+    // 타입을 명확하게 string으로 추출
+    let coiDateValue: string;
+    if (typeof rawValue === 'string') {
+      coiDateValue = rawValue;
+    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      const first = rawValue[0];
+      coiDateValue = typeof first === 'string' ? first : String(first);
+    } else {
+      coiDateValue = new Date().toISOString();
+    }
+
     result['COIDate'] = formatDate(coiDateValue, 'MMMM D, YYYY');
     result['COIDateShort'] = formatDate(coiDateValue, 'MM/DD/YYYY');
     result['COIDateISO'] = formatDate(coiDateValue, 'YYYY-MM-DD');
@@ -774,7 +785,18 @@ export function transformSurveyToVariables(
   const signDateResponse = responses.find(r => r.questionId === '__SIGNDate');
   if (signDateResponse?.value) {
     const rawValue = signDateResponse.value;
-    const signDateValue = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
+
+    // 타입을 명확하게 string으로 추출
+    let signDateValue: string;
+    if (typeof rawValue === 'string') {
+      signDateValue = rawValue;
+    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      const first = rawValue[0];
+      signDateValue = typeof first === 'string' ? first : String(first);
+    } else {
+      signDateValue = new Date().toISOString();
+    }
+
     result['SIGNDate'] = formatDate(signDateValue, 'MMMM D, YYYY');
     result['SIGNDateShort'] = formatDate(signDateValue, 'MM/DD/YYYY');
     result['SIGNDateISO'] = formatDate(signDateValue, 'YYYY-MM-DD');
@@ -873,7 +895,17 @@ export function transformSurveyToVariables(
   const authSharesResponse = responses.find(r => r.questionId === '__authorizedShares');
   if (authSharesResponse?.value) {
     const rawValue = authSharesResponse.value;
-    const authSharesValue = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
+
+    let authSharesValue: string;
+    if (typeof rawValue === 'string') {
+      authSharesValue = rawValue;
+    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      const first = rawValue[0];
+      authSharesValue = typeof first === 'string' ? first : String(first);
+    } else {
+      authSharesValue = '0';
+    }
+
     const numValue = parseFloat(authSharesValue.replace(/,/g, ''));
     result['authorizedShares'] = formatNumberWithComma(numValue);
     result['authorizedSharesRaw'] = numValue.toString();
@@ -883,7 +915,17 @@ export function transformSurveyToVariables(
   const parValueResponse = responses.find(r => r.questionId === '__parValue');
   if (parValueResponse?.value) {
     const rawValue = parValueResponse.value;
-    const parVal = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
+
+    let parVal: string;
+    if (typeof rawValue === 'string') {
+      parVal = rawValue;
+    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      const first = rawValue[0];
+      parVal = typeof first === 'string' ? first : String(first);
+    } else {
+      parVal = '0';
+    }
+
     result['parValue'] = parVal;
     result['parValueDollar'] = '$' + parVal;
   }
@@ -891,7 +933,17 @@ export function transformSurveyToVariables(
   const fmvResponse = responses.find(r => r.questionId === '__fairMarketValue');
   if (fmvResponse?.value) {
     const rawValue = fmvResponse.value;
-    const fmvVal = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
+
+    let fmvVal: string;
+    if (typeof rawValue === 'string') {
+      fmvVal = rawValue;
+    } else if (Array.isArray(rawValue) && rawValue.length > 0) {
+      const first = rawValue[0];
+      fmvVal = typeof first === 'string' ? first : String(first);
+    } else {
+      fmvVal = '0';
+    }
+
     result['fairMarketValue'] = fmvVal;
     result['fairMarketValueDollar'] = '$' + fmvVal;
   }
