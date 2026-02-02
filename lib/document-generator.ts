@@ -811,6 +811,7 @@ export function transformSurveyToVariables(
         // 필드별 포맷팅된 목록
         result[`${baseName}${fieldCapitalized}Formatted`] = formatListAnd(fieldValues);
         result[`${baseName}${fieldCapitalized}List`] = formatListComma(fieldValues);
+        result[`${baseName}${fieldCapitalized}OrList`] = formatListOr(fieldValues);
 
         // 개별 항목 접근 (1-indexed, 기존 템플릿 호환)
         fieldValues.forEach((val, idx) => {
@@ -870,6 +871,51 @@ export function transformSurveyToVariables(
 
     // 계산된 값인 경우 나중에 처리
     if (mapping.questionId === '__calculated__') {
+      continue;
+    }
+
+    // 반복 그룹 필드 매핑 처리 (__founders.cash, __directors.name 등)
+    if (mapping.questionId.startsWith('__') && mapping.questionId.includes('.')) {
+      const [groupPart, fieldName] = mapping.questionId.substring(2).split('.');
+      // groupPart: "founders" or "directors"
+      // fieldName: "cash", "name", "email", etc.
+
+      if (groupPart && fieldName) {
+        const fieldCapitalized = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+
+        // 변환 규칙에 따라 적절한 자동 생성 변수 참조
+        let sourceVariable: string;
+        switch (mapping.transformRule) {
+          case 'list_or':
+            sourceVariable = `${groupPart}${fieldCapitalized}OrList`;
+            break;
+          case 'list_comma':
+            sourceVariable = `${groupPart}${fieldCapitalized}List`;
+            break;
+          case 'list_and':
+          default:
+            sourceVariable = `${groupPart}${fieldCapitalized}Formatted`;
+            break;
+        }
+
+        // 이미 생성된 자동 변수에서 값 가져오기
+        if (result[sourceVariable]) {
+          result[variableKey] = result[sourceVariable];
+        } else {
+          result[variableKey] = mapping.defaultValue || '';
+        }
+        continue;
+      }
+    }
+
+    // 반복 그룹 Count 매핑 처리 (__foundersCount, __directorsCount)
+    if (mapping.questionId === '__foundersCount' || mapping.questionId === '__directorsCount') {
+      const countVar = mapping.questionId.substring(2); // "foundersCount" or "directorsCount"
+      if (result[countVar]) {
+        result[variableKey] = result[countVar];
+      } else {
+        result[variableKey] = mapping.defaultValue || '0';
+      }
       continue;
     }
 
