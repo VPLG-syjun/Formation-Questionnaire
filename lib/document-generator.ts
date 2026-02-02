@@ -757,7 +757,8 @@ export function transformSurveyToVariables(
   // 3. 관리자 설정 날짜 (COIDate, SIGNDate) 처리
   const coiDateResponse = responses.find(r => r.questionId === '__COIDate');
   if (coiDateResponse?.value) {
-    const coiDateValue = Array.isArray(coiDateResponse.value) ? coiDateResponse.value[0] : coiDateResponse.value;
+    const rawValue = coiDateResponse.value;
+    const coiDateValue = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
     result['COIDate'] = formatDate(coiDateValue, 'MMMM D, YYYY');
     result['COIDateShort'] = formatDate(coiDateValue, 'MM/DD/YYYY');
     result['COIDateISO'] = formatDate(coiDateValue, 'YYYY-MM-DD');
@@ -772,7 +773,8 @@ export function transformSurveyToVariables(
 
   const signDateResponse = responses.find(r => r.questionId === '__SIGNDate');
   if (signDateResponse?.value) {
-    const signDateValue = Array.isArray(signDateResponse.value) ? signDateResponse.value[0] : signDateResponse.value;
+    const rawValue = signDateResponse.value;
+    const signDateValue = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
     result['SIGNDate'] = formatDate(signDateValue, 'MMMM D, YYYY');
     result['SIGNDateShort'] = formatDate(signDateValue, 'MM/DD/YYYY');
     result['SIGNDateISO'] = formatDate(signDateValue, 'YYYY-MM-DD');
@@ -870,7 +872,8 @@ export function transformSurveyToVariables(
   // 5. 관리자 설정 값 (Authorized Shares, Par Value, Fair Market Value) 처리
   const authSharesResponse = responses.find(r => r.questionId === '__authorizedShares');
   if (authSharesResponse?.value) {
-    const authSharesValue = Array.isArray(authSharesResponse.value) ? authSharesResponse.value[0] : authSharesResponse.value;
+    const rawValue = authSharesResponse.value;
+    const authSharesValue = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
     const numValue = parseFloat(authSharesValue.replace(/,/g, ''));
     result['authorizedShares'] = formatNumberWithComma(numValue);
     result['authorizedSharesRaw'] = numValue.toString();
@@ -879,14 +882,16 @@ export function transformSurveyToVariables(
 
   const parValueResponse = responses.find(r => r.questionId === '__parValue');
   if (parValueResponse?.value) {
-    const parVal = Array.isArray(parValueResponse.value) ? parValueResponse.value[0] : parValueResponse.value;
+    const rawValue = parValueResponse.value;
+    const parVal = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
     result['parValue'] = parVal;
     result['parValueDollar'] = '$' + parVal;
   }
 
   const fmvResponse = responses.find(r => r.questionId === '__fairMarketValue');
   if (fmvResponse?.value) {
-    const fmvVal = Array.isArray(fmvResponse.value) ? fmvResponse.value[0] : fmvResponse.value;
+    const rawValue = fmvResponse.value;
+    const fmvVal = Array.isArray(rawValue) ? String(rawValue[0]) : String(rawValue);
     result['fairMarketValue'] = fmvVal;
     result['fairMarketValueDollar'] = '$' + fmvVal;
   }
