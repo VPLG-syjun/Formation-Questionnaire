@@ -174,6 +174,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const survey = JSON.parse(surveyData);
 
+    // 디버깅: survey 구조 확인
+    console.log('[DEBUG] Survey keys:', Object.keys(survey));
+    console.log('[DEBUG] Survey has answers:', !!survey.answers, 'count:', survey.answers?.length || 0);
+    console.log('[DEBUG] Survey has founders direct:', !!survey.founders);
+
     // 설문 답변을 Map으로 관리 (동일 questionId는 마지막 값으로 덮어씀)
     const responsesMap = new Map<string, SurveyResponse>();
 
@@ -181,6 +186,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const surveyAnswers: SurveyResponse[] = survey.answers || [];
     for (const answer of surveyAnswers) {
       responsesMap.set(answer.questionId, answer);
+    }
+
+    // 1b. founders/directors가 별도 필드로 있는 경우 추가
+    if (survey.founders && Array.isArray(survey.founders) && survey.founders.length > 0) {
+      console.log('[DEBUG] Adding founders from survey.founders:', survey.founders.length, 'items');
+      responsesMap.set('founders', { questionId: 'founders', value: survey.founders });
+    }
+    if (survey.directors && Array.isArray(survey.directors) && survey.directors.length > 0) {
+      console.log('[DEBUG] Adding directors from survey.directors:', survey.directors.length, 'items');
+      responsesMap.set('directors', { questionId: 'directors', value: survey.directors });
     }
 
     // 2. 고객 정보 추가 (덮어씀)
@@ -274,7 +289,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .map(v => JSON.parse(v as string))
           .filter(v => v.templateId === templateId);
 
+        // 디버깅: 변수 매핑 로깅
+        const calculatedMappings = variableMappings.filter(m => m.questionId === '__calculated__');
+        console.log(`[DEBUG] Template ${templateId} - Total mappings: ${variableMappings.length}, Calculated: ${calculatedMappings.length}`);
+        if (calculatedMappings.length > 0) {
+          console.log('[DEBUG] Calculated mappings:', JSON.stringify(calculatedMappings, null, 2));
+        }
+
         // 3d. 설문 답변 → 변수 변환
+        console.log('[DEBUG] Responses before transform:', JSON.stringify(responses.map(r => ({
+          questionId: r.questionId,
+          valueType: typeof r.value,
+          isArray: Array.isArray(r.value),
+          value: Array.isArray(r.value) && r.value.length > 0 && typeof r.value[0] === 'object'
+            ? `[${r.value.length} objects]`
+            : r.value
+        })), null, 2));
         let variables = transformSurveyToVariables(responses, variableMappings);
 
         // 디버깅: Founder 관련 변수 로깅

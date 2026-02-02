@@ -637,48 +637,68 @@ export function evaluateFormula(
   formula: string,
   variables: Record<string, string>
 ): string {
-  if (!formula || !formula.trim()) return '';
+  if (!formula || !formula.trim()) {
+    console.warn('[evaluateFormula] Empty formula');
+    return '';
+  }
 
   try {
     // 변수 치환: {변수명} → 숫자값
     let expression = formula;
     const variablePattern = /\{([^}]+)\}/g;
-    let match;
+    const matches: Array<{ varName: string; value: string | undefined; numValue: number }> = [];
 
+    // 모든 변수를 먼저 찾기
+    let match;
     while ((match = variablePattern.exec(formula)) !== null) {
       const varName = match[1];
       const value = variables[varName];
+      let numValue = 0;
 
-      if (value === undefined || value === '') {
-        // 변수가 없거나 빈 값이면 0으로 처리
-        expression = expression.replace(match[0], '0');
-      } else {
-        // 콤마 제거하고 숫자로 변환
-        const numValue = parseFloat(value.replace(/[$,]/g, ''));
+      if (value !== undefined && value !== '') {
+        // 콤마와 달러 기호 제거하고 숫자로 변환
+        const cleanValue = value.replace(/[$,]/g, '');
+        numValue = parseFloat(cleanValue);
         if (isNaN(numValue)) {
-          expression = expression.replace(match[0], '0');
-        } else {
-          expression = expression.replace(match[0], numValue.toString());
+          numValue = 0;
         }
       }
+
+      matches.push({ varName, value, numValue });
     }
+
+    // 디버깅 로그
+    console.log('[evaluateFormula] Formula:', formula);
+    console.log('[evaluateFormula] Variables found:', matches);
+
+    // 변수 치환 (모든 occurrence 교체를 위해 replaceAll 사용)
+    for (const { varName, numValue } of matches) {
+      const placeholder = `{${varName}}`;
+      // replaceAll을 사용하여 모든 occurrence 교체
+      expression = expression.split(placeholder).join(numValue.toString());
+    }
+
+    console.log('[evaluateFormula] Expression after substitution:', expression);
 
     // 허용된 문자만 있는지 확인 (보안)
     if (!/^[\d\s+\-*/().]+$/.test(expression)) {
-      console.warn('Invalid formula expression:', expression);
+      console.warn('[evaluateFormula] Invalid expression (contains disallowed chars):', expression);
       return '';
     }
 
     // 수식 계산 (안전한 eval 대체)
     const result = evaluateMathExpression(expression);
 
+    console.log('[evaluateFormula] Result:', result);
+
     if (isNaN(result) || !isFinite(result)) {
+      console.warn('[evaluateFormula] Result is NaN or Infinite');
       return '';
     }
 
     return result.toString();
   } catch (error) {
-    console.error('Formula evaluation error:', error);
+    console.error('[evaluateFormula] Error:', error);
     return '';
   }
 }
@@ -796,6 +816,9 @@ export function transformSurveyToVariables(
   }
 
   // 4. 반복 그룹 데이터 처리 (directors, founders 등)
+  console.log('[transformSurveyToVariables] Step 4: Processing repeating groups');
+  console.log('[transformSurveyToVariables] All responses questionIds:', responses.map(r => r.questionId));
+
   for (const response of responses) {
     const value = response.value;
 
@@ -803,6 +826,7 @@ export function transformSurveyToVariables(
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
       const groupItems = value as Array<Record<string, string>>;
       const baseName = response.questionId;
+      console.log(`[transformSurveyToVariables] Found repeating group: ${baseName}, items:`, JSON.stringify(groupItems));
 
       // 그룹 개수
       result[`${baseName}Count`] = groupItems.length.toString();
@@ -1136,14 +1160,27 @@ export function transformSurveyToVariables(
   }
 
   // 6. 계산 변수 처리 (다른 변수들이 모두 처리된 후)
+  console.log('[transformSurveyToVariables] Step 6: Processing calculated variables');
+  console.log('[transformSurveyToVariables] Available variables for formula:', {
+    Founder1Cash: result['Founder1Cash'],
+    founder1Cash: result['founder1Cash'],
+    FMV: result['FMV'],
+    fairMarketValue: result['fairMarketValue'],
+  });
+
   for (const mapping of variableMappings) {
     if (mapping.questionId !== '__calculated__') continue;
-    if (!mapping.formula) continue;
+    if (!mapping.formula) {
+      console.warn(`[transformSurveyToVariables] Calculated variable ${mapping.variableName} has no formula`);
+      continue;
+    }
 
     const variableKey = mapping.variableName;
+    console.log(`[transformSurveyToVariables] Processing calculated variable: ${variableKey}, formula: ${mapping.formula}`);
 
     // 수식 평가
     const calculatedValue = evaluateFormula(mapping.formula, result);
+    console.log(`[transformSurveyToVariables] Calculated value for ${variableKey}:`, calculatedValue);
 
     if (calculatedValue) {
       // 데이터 타입에 따른 변환 적용
