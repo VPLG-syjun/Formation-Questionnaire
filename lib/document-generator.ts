@@ -9,7 +9,7 @@
 
 export interface SurveyResponse {
   questionId: string;
-  value: string | string[];
+  value: string | string[] | Array<Record<string, string>>;  // 반복 그룹은 객체 배열
   price?: number;
 }
 
@@ -888,10 +888,18 @@ export function transformSurveyToVariables(
       continue;
     }
 
-    // 배열인 경우 헬퍼 변수 생성 및 리스트 포맷팅 적용
+    // 배열인 경우
     if (Array.isArray(rawValue)) {
-      // 헬퍼 변수 생성 (variableNameCount, variableNameFormatted 등)
-      const helpers = generateArrayHelperVariables(variableKey, rawValue);
+      // 반복 그룹 (객체 배열)인 경우 - 섹션 4에서 이미 처리됨, 스킵
+      if (rawValue.length > 0 && typeof rawValue[0] === 'object') {
+        // 반복 그룹은 이미 자동 처리되었으므로 변수 매핑에서 건너뛰기
+        // directors, founders 등의 반복 그룹 데이터
+        continue;
+      }
+
+      // 일반 문자열 배열인 경우 헬퍼 변수 생성 및 리스트 포맷팅 적용
+      const stringArray = rawValue as string[];
+      const helpers = generateArrayHelperVariables(variableKey, stringArray);
       for (const [key, val] of Object.entries(helpers)) {
         if (typeof val === 'string') {
           result[key] = val;
@@ -905,20 +913,20 @@ export function transformSurveyToVariables(
       let transformedValue: string;
       switch (mapping.transformRule) {
         case 'list_and':
-          transformedValue = formatListAnd(rawValue);
+          transformedValue = formatListAnd(stringArray);
           break;
         case 'list_or':
-          transformedValue = formatListOr(rawValue);
+          transformedValue = formatListOr(stringArray);
           break;
         case 'list_comma':
-          transformedValue = formatListComma(rawValue);
+          transformedValue = formatListComma(stringArray);
           break;
         case 'list_newline':
-          transformedValue = formatListNewline(rawValue);
+          transformedValue = formatListNewline(stringArray);
           break;
         default:
           // 기본값: "A, B, and C" 형식
-          transformedValue = formatListAnd(rawValue);
+          transformedValue = formatListAnd(stringArray);
       }
       result[variableKey] = transformedValue;
       continue;

@@ -479,6 +479,32 @@ export default function TemplateEdit() {
           </div>
         </div>
 
+        {/* 자동 생성 변수 안내 */}
+        <div style={{
+          background: 'var(--color-primary-light)',
+          border: '1px solid var(--color-primary)',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '20px',
+          fontSize: '0.9rem',
+        }}>
+          <strong style={{ color: 'var(--color-primary-dark)' }}>반복 그룹 자동 생성 변수</strong>
+          <p style={{ margin: '8px 0 0', color: 'var(--color-gray-700)' }}>
+            <code>directors</code>, <code>founders</code> 등의 반복 그룹은 다음 변수가 자동 생성됩니다:
+          </p>
+          <ul style={{ margin: '8px 0 0', paddingLeft: '20px', color: 'var(--color-gray-600)' }}>
+            <li><code>{'{#directors}...{/directors}'}</code> - 반복문 (Loop)</li>
+            <li><code>{'{directorsCount}'}</code> - 개수</li>
+            <li><code>{'{hasMultipleDirectors}'}</code> - 2명 이상 조건</li>
+            <li><code>{'{hasSingleDirectors}'}</code> - 1명 조건</li>
+            <li><code>{'{director1Name}'}</code>, <code>{'{director2Name}'}</code> ... - 개별 접근</li>
+            <li><code>{'{directorsNameFormatted}'}</code> - "A, B, and C" 형식</li>
+          </ul>
+          <p style={{ margin: '8px 0 0', color: 'var(--color-gray-500)', fontSize: '0.85rem' }}>
+            * 반복문 내부에서는 <code>{'{name}'}</code>, <code>{'{email}'}</code> 등 필드명으로 직접 접근
+          </p>
+        </div>
+
         {variables.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">📝</div>
@@ -530,15 +556,20 @@ export default function TemplateEdit() {
                           <option value="__parValue">Par Value (액면가)</option>
                           <option value="__fairMarketValue">Fair Market Value (공정시장가치)</option>
                         </optgroup>
-                        {questionSections.map(section => (
-                          <optgroup key={section.id} label={section.title}>
-                            {section.questions.map(q => (
-                              <option key={q.id} value={q.id}>
-                                {q.text.length > 40 ? q.text.substring(0, 40) + '...' : q.text}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
+                        {questionSections.map(section => {
+                          // repeatable_group 제외
+                          const filteredQuestions = section.questions.filter(q => q.type !== 'repeatable_group');
+                          if (filteredQuestions.length === 0) return null;
+                          return (
+                            <optgroup key={section.id} label={section.title}>
+                              {filteredQuestions.map(q => (
+                                <option key={q.id} value={q.id}>
+                                  {q.text.length > 40 ? q.text.substring(0, 40) + '...' : q.text}
+                                </option>
+                              ))}
+                            </optgroup>
+                          );
+                        })}
                       </select>
                       {variable.questionId === '__calculated__' && (
                         <input
@@ -889,15 +920,20 @@ export default function TemplateEdit() {
                     <option value="__parValue">Par Value (액면가)</option>
                     <option value="__fairMarketValue">Fair Market Value (공정시장가치)</option>
                   </optgroup>
-                  {questionSections.map(section => (
-                    <optgroup key={section.id} label={section.title}>
-                      {section.questions.map(q => (
-                        <option key={q.id} value={q.id}>
-                          {q.text.length > 40 ? q.text.substring(0, 40) + '...' : q.text}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
+                  {questionSections.map(section => {
+                    // repeatable_group 제외
+                    const filteredQuestions = section.questions.filter(q => q.type !== 'repeatable_group');
+                    if (filteredQuestions.length === 0) return null;
+                    return (
+                      <optgroup key={section.id} label={section.title}>
+                        {filteredQuestions.map(q => (
+                          <option key={q.id} value={q.id}>
+                            {q.text.length > 40 ? q.text.substring(0, 40) + '...' : q.text}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
                 </select>
               </div>
 
