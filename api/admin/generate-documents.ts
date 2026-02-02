@@ -269,6 +269,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // 3d. 설문 답변 → 변수 변환
         let variables = transformSurveyToVariables(responses, variableMappings);
 
+        // 디버깅: Founder 관련 변수 로깅
+        const founderVars = Object.entries(variables)
+          .filter(([k]) => k.toLowerCase().includes('founder') || k.toLowerCase().includes('fmv'))
+          .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {});
+        console.log(`[DEBUG] Template ${templateId} (${template.displayName || template.name}) - Founder vars:`, JSON.stringify(founderVars, null, 2));
+
         // 3e. overrideVariables 적용 (우선순위 높음)
         variables = { ...variables, ...overrideVariables };
 
