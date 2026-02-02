@@ -156,11 +156,27 @@ export function numberToKoreanCurrency(num: number | string): string {
 /**
  * 숫자를 콤마 형식으로 변환
  * @example formatNumberWithComma(10000000) → "10,000,000"
+ * @example formatNumberWithComma(0.0001) → "0.0001"
  */
 export function formatNumberWithComma(num: number | string): string {
   const n = typeof num === 'string' ? parseFloat(num.replace(/[^0-9.-]/g, '')) : num;
   if (isNaN(n)) return '0';
-  return n.toLocaleString('en-US');
+
+  // 소수점 이하 자릿수 계산 (작은 숫자 보존)
+  const numStr = n.toString();
+  const decimalIndex = numStr.indexOf('.');
+  const decimalPlaces = decimalIndex >= 0 ? numStr.length - decimalIndex - 1 : 0;
+
+  // 정수이거나 소수점 2자리 이하면 기본 처리
+  if (decimalPlaces <= 2) {
+    return n.toLocaleString('en-US');
+  }
+
+  // 소수점이 많은 경우 (0.0001 등) 원래 자릿수 유지
+  return n.toLocaleString('en-US', {
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces,
+  });
 }
 
 // ============================================
