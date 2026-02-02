@@ -580,7 +580,7 @@ export default function TemplateEdit() {
                           <option value="__parValue">Par Value (액면가)</option>
                           <option value="__fairMarketValue">Fair Market Value (공정시장가치)</option>
                         </optgroup>
-                        <optgroup label="Founders 자동 생성 변수">
+                        <optgroup label="Founders 목록 변수">
                           <option value="__founders.cash">Founders Cash (투자금 목록)</option>
                           <option value="__founders.name">Founders Name (이름 목록)</option>
                           <option value="__founders.email">Founders Email (이메일 목록)</option>
@@ -588,11 +588,39 @@ export default function TemplateEdit() {
                           <option value="__founders.type">Founders Type (유형 목록)</option>
                           <option value="__foundersCount">Founders Count (주주 수)</option>
                         </optgroup>
-                        <optgroup label="Directors 자동 생성 변수">
+                        <optgroup label="Founders 개별 항목 (1번째)">
+                          <option value="__founder.1.cash">Founder1 Cash (1번째 투자금)</option>
+                          <option value="__founder.1.name">Founder1 Name (1번째 이름)</option>
+                          <option value="__founder.1.email">Founder1 Email (1번째 이메일)</option>
+                          <option value="__founder.1.address">Founder1 Address (1번째 주소)</option>
+                          <option value="__founder.1.type">Founder1 Type (1번째 유형)</option>
+                        </optgroup>
+                        <optgroup label="Founders 개별 항목 (2번째)">
+                          <option value="__founder.2.cash">Founder2 Cash (2번째 투자금)</option>
+                          <option value="__founder.2.name">Founder2 Name (2번째 이름)</option>
+                          <option value="__founder.2.email">Founder2 Email (2번째 이메일)</option>
+                          <option value="__founder.2.address">Founder2 Address (2번째 주소)</option>
+                          <option value="__founder.2.type">Founder2 Type (2번째 유형)</option>
+                        </optgroup>
+                        <optgroup label="Founders 개별 항목 (3-4번째)">
+                          <option value="__founder.3.cash">Founder3 Cash (3번째 투자금)</option>
+                          <option value="__founder.3.name">Founder3 Name (3번째 이름)</option>
+                          <option value="__founder.4.cash">Founder4 Cash (4번째 투자금)</option>
+                          <option value="__founder.4.name">Founder4 Name (4번째 이름)</option>
+                        </optgroup>
+                        <optgroup label="Directors 목록 변수">
                           <option value="__directors.name">Directors Name (이름 목록)</option>
                           <option value="__directors.email">Directors Email (이메일 목록)</option>
                           <option value="__directors.address">Directors Address (주소 목록)</option>
                           <option value="__directorsCount">Directors Count (이사 수)</option>
+                        </optgroup>
+                        <optgroup label="Directors 개별 항목">
+                          <option value="__director.1.name">Director1 Name (1번째 이름)</option>
+                          <option value="__director.1.email">Director1 Email (1번째 이메일)</option>
+                          <option value="__director.1.address">Director1 Address (1번째 주소)</option>
+                          <option value="__director.2.name">Director2 Name (2번째 이름)</option>
+                          <option value="__director.2.email">Director2 Email (2번째 이메일)</option>
+                          <option value="__director.2.address">Director2 Address (2번째 주소)</option>
                         </optgroup>
                         {questionSections.map(section => {
                           // repeatable_group 제외
@@ -997,7 +1025,7 @@ export default function TemplateEdit() {
                     <option value="__parValue">Par Value (액면가)</option>
                     <option value="__fairMarketValue">Fair Market Value (공정시장가치)</option>
                   </optgroup>
-                  <optgroup label="Founders 자동 생성 변수">
+                  <optgroup label="Founders 목록 변수">
                     <option value="__founders.cash">Founders Cash (투자금 목록)</option>
                     <option value="__founders.name">Founders Name (이름 목록)</option>
                     <option value="__founders.email">Founders Email (이메일 목록)</option>
@@ -1005,11 +1033,39 @@ export default function TemplateEdit() {
                     <option value="__founders.type">Founders Type (유형 목록)</option>
                     <option value="__foundersCount">Founders Count (주주 수)</option>
                   </optgroup>
-                  <optgroup label="Directors 자동 생성 변수">
+                  <optgroup label="Founders 개별 항목 (1번째)">
+                    <option value="__founder.1.cash">Founder1 Cash (1번째 투자금)</option>
+                    <option value="__founder.1.name">Founder1 Name (1번째 이름)</option>
+                    <option value="__founder.1.email">Founder1 Email (1번째 이메일)</option>
+                    <option value="__founder.1.address">Founder1 Address (1번째 주소)</option>
+                    <option value="__founder.1.type">Founder1 Type (1번째 유형)</option>
+                  </optgroup>
+                  <optgroup label="Founders 개별 항목 (2번째)">
+                    <option value="__founder.2.cash">Founder2 Cash (2번째 투자금)</option>
+                    <option value="__founder.2.name">Founder2 Name (2번째 이름)</option>
+                    <option value="__founder.2.email">Founder2 Email (2번째 이메일)</option>
+                    <option value="__founder.2.address">Founder2 Address (2번째 주소)</option>
+                    <option value="__founder.2.type">Founder2 Type (2번째 유형)</option>
+                  </optgroup>
+                  <optgroup label="Founders 개별 항목 (3-4번째)">
+                    <option value="__founder.3.cash">Founder3 Cash (3번째 투자금)</option>
+                    <option value="__founder.3.name">Founder3 Name (3번째 이름)</option>
+                    <option value="__founder.4.cash">Founder4 Cash (4번째 투자금)</option>
+                    <option value="__founder.4.name">Founder4 Name (4번째 이름)</option>
+                  </optgroup>
+                  <optgroup label="Directors 목록 변수">
                     <option value="__directors.name">Directors Name (이름 목록)</option>
                     <option value="__directors.email">Directors Email (이메일 목록)</option>
                     <option value="__directors.address">Directors Address (주소 목록)</option>
                     <option value="__directorsCount">Directors Count (이사 수)</option>
+                  </optgroup>
+                  <optgroup label="Directors 개별 항목">
+                    <option value="__director.1.name">Director1 Name (1번째 이름)</option>
+                    <option value="__director.1.email">Director1 Email (1번째 이메일)</option>
+                    <option value="__director.1.address">Director1 Address (1번째 주소)</option>
+                    <option value="__director.2.name">Director2 Name (2번째 이름)</option>
+                    <option value="__director.2.email">Director2 Email (2번째 이메일)</option>
+                    <option value="__director.2.address">Director2 Address (2번째 주소)</option>
                   </optgroup>
                   {questionSections.map(section => {
                     // repeatable_group 제외

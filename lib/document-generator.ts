@@ -814,10 +814,15 @@ export function transformSurveyToVariables(
         result[`${baseName}${fieldCapitalized}OrList`] = formatListOr(fieldValues);
 
         // 개별 항목 접근 (1-indexed, 기존 템플릿 호환)
+        const singular = baseName.slice(0, -1); // founders -> founder
+        const singularCapitalized = singular.charAt(0).toUpperCase() + singular.slice(1); // Founder
+
         fieldValues.forEach((val, idx) => {
-          // director1Name, director2Name 형식 (기존 호환)
-          result[`${baseName.slice(0, -1)}${idx + 1}${fieldCapitalized}`] = val;
-          // directors1Name, directors2Name 형식 (새 형식)
+          // founder1Cash (소문자 시작)
+          result[`${singular}${idx + 1}${fieldCapitalized}`] = val;
+          // Founder1Cash (대문자 시작) - 템플릿 호환성
+          result[`${singularCapitalized}${idx + 1}${fieldCapitalized}`] = val;
+          // founders1Cash (복수형 소문자)
           result[`${baseName}${idx + 1}${fieldCapitalized}`] = val;
         });
       }
@@ -915,6 +920,31 @@ export function transformSurveyToVariables(
         result[variableKey] = result[countVar];
       } else {
         result[variableKey] = mapping.defaultValue || '0';
+      }
+      continue;
+    }
+
+    // 개별 항목 매핑 처리 (__founder.1.cash, __director.2.name 등)
+    const individualMatch = mapping.questionId.match(/^__(founder|director)\.(\d+)\.(\w+)$/);
+    if (individualMatch) {
+      const [, singular, indexStr, fieldName] = individualMatch;
+      const index = parseInt(indexStr, 10);
+      const fieldCapitalized = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+      const singularCapitalized = singular.charAt(0).toUpperCase() + singular.slice(1);
+
+      // Founder1Cash, Director2Name 형식의 변수 참조
+      const sourceVariable = `${singularCapitalized}${index}${fieldCapitalized}`;
+
+      if (result[sourceVariable]) {
+        result[variableKey] = result[sourceVariable];
+      } else {
+        // 소문자 버전도 시도 (founder1Cash)
+        const lowerSourceVariable = `${singular}${index}${fieldCapitalized}`;
+        if (result[lowerSourceVariable]) {
+          result[variableKey] = result[lowerSourceVariable];
+        } else {
+          result[variableKey] = mapping.defaultValue || '';
+        }
       }
       continue;
     }
