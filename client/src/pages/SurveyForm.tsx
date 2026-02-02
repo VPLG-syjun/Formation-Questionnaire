@@ -36,9 +36,26 @@ export default function SurveyForm() {
 
     questionSections.forEach(section => {
       section.questions.forEach(question => {
-        if (!question.priceEffect) return;
         const answer = answers[question.id];
         if (!answer) return;
+
+        // 반복 그룹의 pricePerItem 처리
+        if (question.type === 'repeatable_group' && question.pricePerItem) {
+          const items = answer as RepeatableGroupItem[];
+          const additionalItems = Math.max(0, items.length - 1); // 첫 번째 항목 이후
+          const price = additionalItems * question.pricePerItem;
+          if (price > 0) {
+            breakdown.push({
+              label: `추가 ${question.itemLabel || '항목'} (${additionalItems}명)`,
+              amount: price,
+            });
+            additionalTotal += price;
+          }
+          return;
+        }
+
+        // 기존 priceEffect 처리
+        if (!question.priceEffect) return;
 
         let price = 0;
         if (question.priceEffect.type === 'perAnswer' && question.priceEffect.values) {
@@ -124,6 +141,15 @@ export default function SurveyForm() {
         let hasFieldError = false;
         items.forEach((item, index) => {
           question.groupFields?.forEach(field => {
+            // 조건부 필드 체크 - 조건이 충족되지 않으면 검증 스킵
+            if (field.conditionalOn) {
+              const { fieldId, values } = field.conditionalOn;
+              const dependentValue = item[fieldId];
+              if (!dependentValue || !values.includes(dependentValue)) {
+                return; // 조건 미충족 시 검증 스킵
+              }
+            }
+
             if (field.required && !item[field.id]?.trim()) {
               newErrors[`${question.id}_${index}_${field.id}`] = '필수 항목입니다.';
               hasFieldError = true;
@@ -394,6 +420,15 @@ export default function SurveyForm() {
                 </div>
                 <div className="repeatable-group-fields">
                   {fields.map(field => {
+                    // 그룹 내 조건부 필드 체크
+                    if (field.conditionalOn) {
+                      const { fieldId, values } = field.conditionalOn;
+                      const dependentValue = item[fieldId];
+                      if (!dependentValue || !values.includes(dependentValue)) {
+                        return null;
+                      }
+                    }
+
                     const fieldError = errors[`${question.id}_${itemIndex}_${field.id}`];
                     return (
                       <div key={field.id} className={`repeatable-field ${fieldError ? 'has-error' : ''}`}>

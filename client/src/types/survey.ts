@@ -1,6 +1,12 @@
 // 질문 유형 정의
 export type QuestionType = 'text' | 'email' | 'tel' | 'number' | 'date' | 'yesno' | 'dropdown' | 'radio' | 'checkbox' | 'repeatable_group';
 
+// 반복 그룹 내 필드 조건부 표시 규칙
+export interface GroupFieldConditional {
+  fieldId: string;    // 같은 그룹 내 다른 필드 ID
+  values: string[];   // 해당 값일 때만 표시
+}
+
 // 반복 그룹 내 필드 정의
 export interface RepeatableField {
   id: string;           // 필드 ID (예: 'name', 'address', 'email')
@@ -9,6 +15,7 @@ export interface RepeatableField {
   placeholder?: string;
   required: boolean;
   options?: QuestionOption[]; // dropdown용
+  conditionalOn?: GroupFieldConditional; // 그룹 내 조건부 표시
 }
 
 // 반복 그룹 항목 데이터
@@ -58,6 +65,7 @@ export interface Question {
   maxItems?: number;                // 최대 항목 수 (기본: 10)
   addButtonText?: string;           // 추가 버튼 텍스트
   itemLabel?: string;               // 각 항목 라벨 (예: '이사', '창업자')
+  pricePerItem?: number;            // 항목당 추가 금액 (첫 번째 항목 이후)
 }
 
 // 질문 그룹 (섹션)
