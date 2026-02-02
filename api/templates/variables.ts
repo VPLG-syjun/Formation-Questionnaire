@@ -11,10 +11,11 @@ const TEMPLATE_FILES_KEY = 'template_files';
 const REPEATABLE_GROUPS = ['directors', 'founders'];
 const REPEATABLE_GROUP_FIELDS = ['name', 'address', 'email', 'type', 'ceoName', 'cash'];
 
-// 반복문 내부에서 사용되는 필드명 (루프 컨텍스트 변수)
+// 반복문 내부에서만 사용되는 필드명 (루프 컨텍스트 변수)
+// 주의: ceoName은 독립 변수로도 사용되므로 여기서 제외
 const LOOP_CONTEXT_FIELDS = [
-  // 반복 그룹 필드
-  'name', 'address', 'email', 'type', 'ceoName', 'cash',
+  // 반복 그룹 필드 (루프 안에서만 의미 있는 것들)
+  'name', 'address', 'email', 'type', 'cash',
   // docxtemplater 루프 헬퍼
   'index', 'isFirst', 'isLast',
 ];
