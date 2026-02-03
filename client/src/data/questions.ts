@@ -225,7 +225,7 @@ export const questionSections: QuestionSection[] = [
         type: 'text',
         text: 'CEO 성명 (영문)',
         placeholder: 'Gil Dong Hong',
-        required: false,
+        required: true,
         documentField: 'CEOName',
       },
       {
