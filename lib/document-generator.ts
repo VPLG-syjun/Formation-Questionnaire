@@ -1024,11 +1024,16 @@ export function transformSurveyToVariables(
   for (const mapping of variableMappings) {
     const variableKey = mapping.variableName;
 
-    // 이미 반복 그룹에서 생성된 자동 생성 변수는 건너뛰기 (덮어쓰기 방지)
-    // Founder1Cash, Director2Name 등의 패턴
-    const autoGenPattern = /^(founder|Founder|director|Director|founders|directors)[1-9](Name|Cash|Address|Email|Type|CeoName|Share)$/;
-    if (autoGenPattern.test(variableKey) && result[variableKey]) {
-      console.log(`[transformSurveyToVariables] Skipping auto-generated variable: ${variableKey} (already has value: "${result[variableKey]}")`);
+    // 자동 생성 변수 (__auto__): 이미 생성된 값에 변환 규칙만 적용
+    if (mapping.questionId === '__auto__') {
+      if (result[variableKey]) {
+        const originalValue = result[variableKey];
+        const transformedValue = applyTransformRule(originalValue, mapping.dataType, mapping.transformRule);
+        result[variableKey] = transformedValue;
+        console.log(`[transformSurveyToVariables] Applied transform to auto-gen variable: ${variableKey} "${originalValue}" -> "${transformedValue}"`);
+      } else {
+        console.log(`[transformSurveyToVariables] Auto-gen variable not found: ${variableKey}`);
+      }
       continue;
     }
 
