@@ -937,28 +937,14 @@ export function transformSurveyToVariables(
         const singularCapitalized = singular.charAt(0).toUpperCase() + singular.slice(1); // Founder
 
         fieldValues.forEach((val, idx) => {
-          const varNames = [
-            `${singular}${idx + 1}${fieldCapitalized}`,      // founder1Cash
-            `${singularCapitalized}${idx + 1}${fieldCapitalized}`, // Founder1Cash
-            `${baseName}${idx + 1}${fieldCapitalized}`,      // founders1Cash
-          ];
+          // 기본 변수 설정 (원래 방식 - 안정적)
+          result[`${singular}${idx + 1}${fieldCapitalized}`] = val;
+          result[`${singularCapitalized}${idx + 1}${fieldCapitalized}`] = val;
+          result[`${baseName}${idx + 1}${fieldCapitalized}`] = val;
 
-          // 각 변수명에 대해 매핑이 있는지 확인하고 변환 규칙 적용
-          for (const varName of varNames) {
-            const mapping = variableMappings.find(m => m.variableName === varName);
-            let formattedVal = val;
-
-            if (mapping) {
-              // 변수 매핑이 있으면 데이터 타입과 변환 규칙 적용
-              formattedVal = applyTransformRule(val, mapping.dataType, mapping.transformRule);
-            }
-
-            result[varName] = formattedVal;
-          }
-
-          // 디버그 로깅: Cash 필드인 경우 로그
+          // 디버그 로깅
           if (fieldName.toLowerCase() === 'cash') {
-            console.log(`[transformSurveyToVariables] Set ${singularCapitalized}${idx + 1}${fieldCapitalized} = "${result[varNames[1]]}"`);
+            console.log(`[transformSurveyToVariables] Set ${singularCapitalized}${idx + 1}${fieldCapitalized} = "${val}"`);
           }
         });
       }
