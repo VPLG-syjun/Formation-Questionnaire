@@ -512,6 +512,62 @@ export function transformText(text: string | undefined, rule: string): string {
   }
 }
 
+/**
+ * 데이터 타입과 변환 규칙에 따라 값을 변환
+ * @param value - 원본 값
+ * @param dataType - 데이터 타입 (number, currency, date, text 등)
+ * @param transformRule - 변환 규칙
+ * @returns 변환된 값
+ */
+export function applyTransformRule(
+  value: string,
+  dataType: string,
+  transformRule: string
+): string {
+  if (!value) return value;
+
+  switch (dataType) {
+    case 'number':
+      switch (transformRule) {
+        case 'comma':
+          return formatNumberWithComma(value);
+        case 'number_english':
+          return numberToEnglish(value);
+        case 'ordinal_english':
+          return numberToOrdinal(value);
+        default:
+          return value;
+      }
+
+    case 'currency':
+      switch (transformRule) {
+        case 'comma_dollar':
+          return '$' + formatNumberWithComma(value);
+        case 'comma_dollar_cents':
+          const numVal = parseFloat(value.replace(/[^0-9.-]/g, ''));
+          return '$' + numVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        case 'number_english':
+          return numberToEnglishCurrency(value);
+        case 'number_korean':
+          return numberToKoreanCurrency(value);
+        case 'comma_won':
+          return formatNumberWithComma(value) + '원';
+        default:
+          return '$' + formatNumberWithComma(value);
+      }
+
+    case 'date':
+      return formatDate(value, transformRule || 'YYYY-MM-DD');
+
+    case 'phone':
+      return formatPhone(value, transformRule || 'dashed');
+
+    case 'text':
+    default:
+      return transformText(value, transformRule || 'none');
+  }
+}
+
 // ============================================
 // 리스트 포맷팅 유틸리티
 // ============================================
@@ -881,16 +937,28 @@ export function transformSurveyToVariables(
         const singularCapitalized = singular.charAt(0).toUpperCase() + singular.slice(1); // Founder
 
         fieldValues.forEach((val, idx) => {
-          // founder1Cash (소문자 시작)
-          result[`${singular}${idx + 1}${fieldCapitalized}`] = val;
-          // Founder1Cash (대문자 시작) - 템플릿 호환성
-          result[`${singularCapitalized}${idx + 1}${fieldCapitalized}`] = val;
-          // founders1Cash (복수형 소문자)
-          result[`${baseName}${idx + 1}${fieldCapitalized}`] = val;
+          const varNames = [
+            `${singular}${idx + 1}${fieldCapitalized}`,      // founder1Cash
+            `${singularCapitalized}${idx + 1}${fieldCapitalized}`, // Founder1Cash
+            `${baseName}${idx + 1}${fieldCapitalized}`,      // founders1Cash
+          ];
+
+          // 각 변수명에 대해 매핑이 있는지 확인하고 변환 규칙 적용
+          for (const varName of varNames) {
+            const mapping = variableMappings.find(m => m.variableName === varName);
+            let formattedVal = val;
+
+            if (mapping) {
+              // 변수 매핑이 있으면 데이터 타입과 변환 규칙 적용
+              formattedVal = applyTransformRule(val, mapping.dataType, mapping.transformRule);
+            }
+
+            result[varName] = formattedVal;
+          }
 
           // 디버그 로깅: Cash 필드인 경우 로그
           if (fieldName.toLowerCase() === 'cash') {
-            console.log(`[transformSurveyToVariables] Set ${singularCapitalized}${idx + 1}${fieldCapitalized} = "${val}"`);
+            console.log(`[transformSurveyToVariables] Set ${singularCapitalized}${idx + 1}${fieldCapitalized} = "${result[varNames[1]]}"`);
           }
         });
       }
