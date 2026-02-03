@@ -1024,8 +1024,21 @@ export function transformSurveyToVariables(
   for (const mapping of variableMappings) {
     const variableKey = mapping.variableName;
 
-    // 직접 입력인 경우 건너뛰기
+    // 이미 반복 그룹에서 생성된 자동 생성 변수는 건너뛰기 (덮어쓰기 방지)
+    // Founder1Cash, Director2Name 등의 패턴
+    const autoGenPattern = /^(founder|Founder|director|Director|founders|directors)[1-9](Name|Cash|Address|Email|Type|CeoName|Share)$/;
+    if (autoGenPattern.test(variableKey) && result[variableKey]) {
+      console.log(`[transformSurveyToVariables] Skipping auto-generated variable: ${variableKey} (already has value: "${result[variableKey]}")`);
+      continue;
+    }
+
+    // 직접 입력인 경우
     if (mapping.questionId === '__manual__') {
+      // 이미 값이 있으면 건너뛰기 (반복 그룹에서 생성된 값 보존)
+      if (result[variableKey]) {
+        console.log(`[transformSurveyToVariables] Skipping __manual__ variable: ${variableKey} (already has value)`);
+        continue;
+      }
       if (mapping.defaultValue) {
         result[variableKey] = mapping.defaultValue;
       }
