@@ -81,10 +81,24 @@ export default function SurveyForm() {
   // Check if a question should be visible based on conditional rules
   const isQuestionVisible = (question: Question): boolean => {
     if (!question.conditionalOn) return true;
-    const { questionId, values } = question.conditionalOn;
+    const { questionId, values, minGroupCount } = question.conditionalOn;
     const answer = answers[questionId];
-    if (!answer) return false;
-    return values.includes(answer as string);
+
+    // 반복 그룹의 최소 항목 수 조건 체크
+    if (minGroupCount !== undefined) {
+      const groupItems = answer as RepeatableGroupItem[] || [];
+      if (groupItems.length < minGroupCount) return false;
+      // minGroupCount만 있고 values가 없으면 개수 조건만 통과하면 표시
+      if (!values) return true;
+    }
+
+    // 값 기반 조건 체크
+    if (values) {
+      if (!answer) return false;
+      return values.includes(answer as string);
+    }
+
+    return true;
   };
 
   // Get visible questions for current section

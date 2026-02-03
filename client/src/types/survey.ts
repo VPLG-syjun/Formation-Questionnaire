@@ -33,7 +33,8 @@ export interface QuestionOption {
 // 조건부 표시 규칙
 export interface ConditionalRule {
   questionId: string; // 의존하는 질문 ID
-  values: string[];   // 해당 값일 때만 표시
+  values?: string[];   // 해당 값일 때만 표시
+  minGroupCount?: number; // 반복 그룹의 최소 항목 수 조건
 }
 
 // 질문 정의

@@ -383,6 +383,10 @@ export const questionSections: QuestionSection[] = [
         text: '각 창업자는 출자한 창립 자금에 비례하여 주식을 소유하나요?',
         description: '창업자가 2명 이상인 경우에만 해당됩니다.',
         required: false,
+        conditionalOn: {
+          questionId: 'founders',
+          minGroupCount: 2,
+        },
         documentField: 'Share',
       },
       {
