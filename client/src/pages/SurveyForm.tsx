@@ -1,8 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { questionSections, BASE_PRICE } from '../data/questions';
 import { Question, SurveyAnswer, RepeatableGroupItem, RepeatableField } from '../types/survey';
 import { createSurvey } from '../services/api';
+
+// 이름-주소-이메일 매핑 정보 타입
+interface PersonInfo {
+  name: string;
+  address?: string;
+  email?: string;
+}
 
 export default function SurveyForm() {
   const navigate = useNavigate();
@@ -10,6 +17,62 @@ export default function SurveyForm() {
   const [answers, setAnswers] = useState<Record<string, string | string[] | RepeatableGroupItem[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 모든 입력된 이름-주소-이메일 매핑을 수집하는 함수
+  // currentAnswers 인수를 받아서 현재 상태를 기반으로 수집
+  const collectPersonInfoMap = useCallback((currentAnswers?: Record<string, string | string[] | RepeatableGroupItem[]>): Map<string, PersonInfo> => {
+    const answersToUse = currentAnswers || answers;
+    const personMap = new Map<string, PersonInfo>();
+
+    // 이사 정보 수집 (directors 반복 그룹)
+    const directors = answersToUse['directors'] as RepeatableGroupItem[] || [];
+    directors.forEach(director => {
+      const name = director.name?.trim();
+      if (name) {
+        const existing = personMap.get(name);
+        personMap.set(name, {
+          name,
+          address: existing?.address || director.address?.trim() || undefined,
+          email: existing?.email || director.email?.trim() || undefined,
+        });
+      }
+    });
+
+    // 임원 정보 수집 (CEO, CFO, CS)
+    const officers = [
+      { nameKey: 'ceoName', addressKey: 'ceoAddress', emailKey: 'ceoEmail' },
+      { nameKey: 'cfoName', addressKey: 'cfoAddress', emailKey: 'cfoEmail' },
+      { nameKey: 'csName', addressKey: 'csAddress', emailKey: 'csEmail' },
+    ];
+
+    officers.forEach(({ nameKey, addressKey, emailKey }) => {
+      const name = (answersToUse[nameKey] as string)?.trim();
+      if (name) {
+        const existing = personMap.get(name);
+        personMap.set(name, {
+          name,
+          address: existing?.address || (answersToUse[addressKey] as string)?.trim() || undefined,
+          email: existing?.email || (answersToUse[emailKey] as string)?.trim() || undefined,
+        });
+      }
+    });
+
+    // 창업자/주주 정보 수집 (founders 반복 그룹)
+    const founders = answersToUse['founders'] as RepeatableGroupItem[] || [];
+    founders.forEach(founder => {
+      const name = founder.name?.trim();
+      if (name) {
+        const existing = personMap.get(name);
+        personMap.set(name, {
+          name,
+          address: existing?.address || founder.address?.trim() || undefined,
+          email: existing?.email || founder.email?.trim() || undefined,
+        });
+      }
+    });
+
+    return personMap;
+  }, [answers]);
 
   const currentSection = questionSections[currentSectionIndex];
   const totalSections = questionSections.length;
@@ -76,7 +139,37 @@ export default function SurveyForm() {
   }, [answers]);
 
   const handleAnswer = (questionId: string, value: string | string[] | RepeatableGroupItem[]) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    // 임원 이름 필드와 해당하는 주소/이메일 필드 매핑
+    const officerFieldMapping: Record<string, { addressKey: string; emailKey: string }> = {
+      ceoName: { addressKey: 'ceoAddress', emailKey: 'ceoEmail' },
+      cfoName: { addressKey: 'cfoAddress', emailKey: 'cfoEmail' },
+      csName: { addressKey: 'csAddress', emailKey: 'csEmail' },
+    };
+
+    setAnswers(prev => {
+      const newAnswers = { ...prev, [questionId]: value };
+
+      // 임원 이름 필드가 변경된 경우 자동 완성 로직 실행
+      if (officerFieldMapping[questionId] && typeof value === 'string' && value.trim()) {
+        const personMap = collectPersonInfoMap(prev);
+        const matchedPerson = personMap.get(value.trim());
+        const { addressKey, emailKey } = officerFieldMapping[questionId];
+
+        if (matchedPerson) {
+          // 현재 주소가 비어있고 매칭된 사람에게 주소가 있으면 자동 채움
+          if (!(prev[addressKey] as string)?.trim() && matchedPerson.address) {
+            newAnswers[addressKey] = matchedPerson.address;
+          }
+          // 현재 이메일이 비어있고 매칭된 사람에게 이메일이 있으면 자동 채움
+          if (!(prev[emailKey] as string)?.trim() && matchedPerson.email) {
+            newAnswers[emailKey] = matchedPerson.email;
+          }
+        }
+      }
+
+      return newAnswers;
+    });
+
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors[questionId];
@@ -101,11 +194,29 @@ export default function SurveyForm() {
     handleAnswer(questionId, newItems);
   };
 
-  // 반복 그룹: 필드 값 변경
+  // 반복 그룹: 필드 값 변경 (이름 입력 시 주소/이메일 자동 완성)
   const handleGroupFieldChange = (questionId: string, itemIndex: number, fieldId: string, value: string) => {
     const currentItems = (answers[questionId] as RepeatableGroupItem[]) || [];
     const newItems = [...currentItems];
     newItems[itemIndex] = { ...newItems[itemIndex], [fieldId]: value };
+
+    // name 필드가 변경된 경우 자동 완성 로직 실행
+    if (fieldId === 'name' && value.trim()) {
+      const personMap = collectPersonInfoMap();
+      const matchedPerson = personMap.get(value.trim());
+
+      if (matchedPerson) {
+        // 현재 주소가 비어있고 매칭된 사람에게 주소가 있으면 자동 채움
+        if (!newItems[itemIndex].address?.trim() && matchedPerson.address) {
+          newItems[itemIndex].address = matchedPerson.address;
+        }
+        // 현재 이메일이 비어있고 매칭된 사람에게 이메일이 있으면 자동 채움
+        if (!newItems[itemIndex].email?.trim() && matchedPerson.email) {
+          newItems[itemIndex].email = matchedPerson.email;
+        }
+      }
+    }
+
     handleAnswer(questionId, newItems);
   };
 
