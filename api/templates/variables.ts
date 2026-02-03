@@ -237,6 +237,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
+      // 전체 템플릿에 변수 설정 적용 모드
+      if (action === 'applyToAll') {
+        const { variableName, settings } = req.body;
+
+        if (!variableName || !settings) {
+          return res.status(400).json({ error: '변수명과 설정이 필요합니다.' });
+        }
+
+        // 모든 변수 조회
+        const allVariables = await client.hGetAll(TEMPLATE_VARIABLES_KEY);
+        let updatedCount = 0;
+
+        // 같은 변수명을 가진 모든 변수 업데이트
+        for (const [varId, varData] of Object.entries(allVariables)) {
+          const variable = JSON.parse(varData);
+          if (variable.variableName === variableName) {
+            const updatedVariable = {
+              ...variable,
+              questionId: settings.questionId,
+              dataType: settings.dataType,
+              transformRule: settings.transformRule,
+              required: settings.required,
+            };
+
+            // 계산 변수인 경우 formula 저장
+            if (settings.questionId === '__calculated__' && settings.formula) {
+              updatedVariable.formula = settings.formula;
+            } else {
+              delete updatedVariable.formula;
+            }
+
+            await client.hSet(TEMPLATE_VARIABLES_KEY, varId, JSON.stringify(updatedVariable));
+            updatedCount++;
+          }
+        }
+
+        return res.status(200).json({
+          message: `${updatedCount}개의 템플릿에 적용되었습니다.`,
+          updatedCount,
+        });
+      }
+
       // 일괄 저장 모드 (variables 배열이 있는 경우)
       if (templateId && Array.isArray(variables)) {
         // 템플릿 존재 확인

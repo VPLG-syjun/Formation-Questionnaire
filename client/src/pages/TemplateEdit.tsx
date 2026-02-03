@@ -398,6 +398,37 @@ export default function TemplateEdit() {
     return questionId;
   };
 
+  const handleApplyToAllTemplates = async (variable: VariableMapping) => {
+    if (!confirm(`"${variable.variableName}" 변수 설정을 모든 템플릿에 적용하시겠습니까?\n\n적용될 설정:\n- 설문 질문/수식: ${variable.questionId}\n- 데이터 타입: ${variable.dataType}\n- 변환 규칙: ${variable.transformRule}\n- 필수: ${variable.required ? '예' : '아니오'}`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/templates/variables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'applyToAll',
+          variableName: variable.variableName,
+          settings: {
+            questionId: variable.questionId,
+            dataType: variable.dataType,
+            transformRule: variable.transformRule,
+            required: variable.required,
+            formula: variable.formula,
+          },
+        }),
+      });
+
+      if (!res.ok) throw new Error('전체 적용에 실패했습니다.');
+
+      const result = await res.json();
+      alert(`${result.updatedCount}개의 템플릿에 적용되었습니다.`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '전체 적용에 실패했습니다.');
+    }
+  };
+
   const handleSave = async () => {
     if (!id) return;
 
@@ -572,6 +603,7 @@ export default function TemplateEdit() {
                   <th>데이터 타입</th>
                   <th>변환 규칙</th>
                   <th style={{ width: '60px', textAlign: 'center' }}>필수</th>
+                  <th style={{ width: '100px', textAlign: 'center' }}>전체 적용</th>
                   <th style={{ width: '80px' }}>액션</th>
                 </tr>
               </thead>
@@ -728,6 +760,16 @@ export default function TemplateEdit() {
                         onChange={(e) => updateVariable(index, 'required', e.target.checked)}
                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                       />
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        className="btn btn-outline"
+                        style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                        onClick={() => handleApplyToAllTemplates(variable)}
+                        title="이 변수 설정을 모든 템플릿에 적용"
+                      >
+                        전체 적용
+                      </button>
                     </td>
                     <td>
                       <button
