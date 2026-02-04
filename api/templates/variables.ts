@@ -327,7 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (existingMappings[templateId]) {
               // 업데이트
               const { varId, variable } = existingMappings[templateId];
-              const updatedVariable = {
+              const updatedVariable: Record<string, unknown> = {
                 ...variable,
                 questionId: settings.questionId,
                 dataType: settings.dataType,
