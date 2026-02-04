@@ -268,7 +268,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // 전체 템플릿에 변수 설정 적용 모드
       if (action === 'applyToAll') {
-        const { variableName, settings } = req.body;
+        const { variableName, settings } = req.body as {
+          variableName: string;
+          settings: {
+            questionId: string;
+            dataType: string;
+            transformRule: string;
+            required: boolean;
+            formula?: string;
+          };
+        };
 
         if (!variableName || !settings) {
           return res.status(400).json({ error: '변수명과 설정이 필요합니다.' });
