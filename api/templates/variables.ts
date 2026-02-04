@@ -22,8 +22,15 @@ const LOOP_CONTEXT_FIELDS = [
 
 // 이름 기반 자동 생성 변수 (설문 데이터에서 자동 추출)
 const NAME_BASED_AUTO_VARIABLES = [
+  // 대문자 시작 버전
   'BankConsentTitle',   // BankConsent 이름의 직책
   'BankConsent2Title',  // BankConsent2 이름의 직책
+  // 소문자 시작 버전
+  'bankConsentTitle',
+  'bankConsent2Title',
+  // 숫자 1 버전 (BankConsent = BankConsent1)
+  'BankConsent1Title',
+  'bankConsent1Title',
 ];
 
 /**

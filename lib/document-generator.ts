@@ -1472,9 +1472,16 @@ export function transformSurveyToVariables(
   const bankConsentResponse = responses.find(r => r.questionId === 'bankConsent');
   if (bankConsentResponse?.value && typeof bankConsentResponse.value === 'string') {
     const bankConsentName = bankConsentResponse.value.trim();
-    result['BankConsent'] = bankConsentName;
     const bankConsentTitle = getTitleForName(bankConsentName, responses);
+    // 다양한 변수명 버전 지원
+    result['BankConsent'] = bankConsentName;
+    result['bankConsent'] = bankConsentName;
+    result['BankConsent1'] = bankConsentName;
+    result['bankConsent1'] = bankConsentName;
     result['BankConsentTitle'] = bankConsentTitle;
+    result['bankConsentTitle'] = bankConsentTitle;
+    result['BankConsent1Title'] = bankConsentTitle;
+    result['bankConsent1Title'] = bankConsentTitle;
     console.log(`[transformSurveyToVariables] BankConsent: ${bankConsentName}, Title: ${bankConsentTitle}`);
   }
 
@@ -1482,9 +1489,12 @@ export function transformSurveyToVariables(
   const bankConsent2Response = responses.find(r => r.questionId === 'bankConsent2');
   if (bankConsent2Response?.value && typeof bankConsent2Response.value === 'string') {
     const bankConsent2Name = bankConsent2Response.value.trim();
-    result['BankConsent2'] = bankConsent2Name;
     const bankConsent2Title = getTitleForName(bankConsent2Name, responses);
+    // 다양한 변수명 버전 지원
+    result['BankConsent2'] = bankConsent2Name;
+    result['bankConsent2'] = bankConsent2Name;
     result['BankConsent2Title'] = bankConsent2Title;
+    result['bankConsent2Title'] = bankConsent2Title;
     console.log(`[transformSurveyToVariables] BankConsent2: ${bankConsent2Name}, Title: ${bankConsent2Title}`);
   }
 
