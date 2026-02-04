@@ -679,12 +679,17 @@ export function generateArrayHelperVariables(
 const ROLE_FULL_NAMES: Record<string, string> = {
   'CEO': 'Chief Executive Officer',
   'CFO': 'Chief Financial Officer',
-  'Corporate Secretary': 'Secretary',
-  'CS': 'Secretary',
+  'Corporate Secretary': 'Corporate Secretary',
+  'CS': 'Corporate Secretary',
   'Director': 'Director',
   'Founder': 'Shareholder',
   'Chairman': 'Chairman of the Board',
 };
+
+/**
+ * 임원(Officer) 직책 목록 - BankConsent 등에서 사용
+ */
+const OFFICER_ROLES = ['CEO', 'CFO', 'Corporate Secretary'];
 
 /**
  * 설문 응답에서 특정 이름의 모든 직책 조회
@@ -775,13 +780,21 @@ export function formatRolesAsTitle(roles: string[]): string {
  * 특정 이름의 직책을 공식 명칭 문자열로 반환
  * @param name - 조회할 이름
  * @param responses - 설문 응답 배열
+ * @param officerOnly - true이면 임원 직책만 반환 (CEO, CFO, Corporate Secretary)
  * @returns 공식 명칭 문자열 (예: 'Chief Executive Officer and Chief Financial Officer')
  */
 export function getTitleForName(
   name: string,
-  responses: SurveyResponse[]
+  responses: SurveyResponse[],
+  officerOnly: boolean = true
 ): string {
-  const roles = getRolesForName(name, responses);
+  const allRoles = getRolesForName(name, responses);
+
+  // 임원 직책만 필터링 (기본값)
+  const roles = officerOnly
+    ? allRoles.filter(role => OFFICER_ROLES.includes(role))
+    : allRoles;
+
   return formatRolesAsTitle(roles);
 }
 
