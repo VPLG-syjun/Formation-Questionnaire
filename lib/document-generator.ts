@@ -1626,6 +1626,82 @@ export function transformSurveyToVariables(
     FMV: result['FMV'],
   });
 
+  // 11. Designator 변수 처리
+  const designatorResponse = responses.find(r => r.questionId === 'designator');
+  const designatorCustomResponse = responses.find(r => r.questionId === 'designatorCustom');
+
+  let designatorValue = '';
+  if (designatorResponse?.value && typeof designatorResponse.value === 'string') {
+    if (designatorResponse.value === 'custom' && designatorCustomResponse?.value) {
+      // 직접 입력인 경우
+      designatorValue = typeof designatorCustomResponse.value === 'string'
+        ? designatorCustomResponse.value.trim()
+        : '';
+    } else {
+      designatorValue = designatorResponse.value;
+    }
+  }
+
+  if (designatorValue) {
+    result['designator'] = designatorValue;
+    result['Designator'] = designatorValue;
+    result['DESIGNATOR'] = designatorValue;
+    console.log(`[transformSurveyToVariables] Designator: ${designatorValue}`);
+  }
+
+  // 12. 대소문자 구분 없는 변수 처리 - 모든 변수에 대해 다양한 케이스 버전 생성
+  const caseInsensitiveResult = createCaseVariations(result);
+
+  return caseInsensitiveResult;
+}
+
+/**
+ * 모든 변수에 대해 대소문자 변형 버전 생성
+ * - 원본 유지
+ * - 소문자 버전 (companyname)
+ * - 대문자 버전 (COMPANYNAME)
+ * - camelCase에서 첫글자 대/소문자 버전
+ */
+function createCaseVariations(variables: Record<string, unknown>): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(variables)) {
+    // 문자열이 아닌 값은 그대로 유지 (배열 등)
+    if (typeof value !== 'string') {
+      (result as Record<string, unknown>)[key] = value;
+      continue;
+    }
+
+    const strValue = value;
+
+    // 원본 유지
+    result[key] = strValue;
+
+    // 소문자 버전
+    const lowerKey = key.toLowerCase();
+    if (!result[lowerKey]) {
+      result[lowerKey] = strValue;
+    }
+
+    // 대문자 버전
+    const upperKey = key.toUpperCase();
+    if (!result[upperKey]) {
+      result[upperKey] = strValue;
+    }
+
+    // 첫글자 대문자 버전 (companyName -> CompanyName)
+    const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+    if (!result[capitalizedKey]) {
+      result[capitalizedKey] = strValue;
+    }
+
+    // 첫글자 소문자 버전 (CompanyName -> companyName)
+    const uncapitalizedKey = key.charAt(0).toLowerCase() + key.slice(1);
+    if (!result[uncapitalizedKey]) {
+      result[uncapitalizedKey] = strValue;
+    }
+  }
+
   return result;
 }
 
