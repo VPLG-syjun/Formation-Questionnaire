@@ -140,6 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         category: t.category || 'Other',
         rules,
         isActive: t.isActive,
+        repeatForPersons: t.repeatForPersons || false,  // 인원별 반복 생성 설정
       };
     });
 

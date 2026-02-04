@@ -57,6 +57,7 @@ export interface Template {
   rules?: SelectionRule[];
   variables?: VariableMapping[];
   isActive: boolean;
+  repeatForPersons?: boolean;  // 인원별 반복 생성 여부
 }
 
 export interface TemplateSelection {
