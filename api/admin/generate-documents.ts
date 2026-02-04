@@ -557,8 +557,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // 3e. overrideVariables 적용 (우선순위 높음)
         variables = { ...variables, ...overrideVariables };
 
-        // 3f. 필수 변수 검증
-        const validation = validateVariables(variables, variableMappings);
+        // 3f. repeatForPersons 확인 (검증 전에 필요)
+        const repeatForPersons = template.repeatForPersons as boolean | undefined;
+
+        // 3g. 필수 변수 검증
+        // repeatForPersons 템플릿의 경우 Person* 변수는 나중에 생성되므로 검증에서 제외
+        const PERSON_AUTO_VARIABLES = [
+          'PersonName', 'personName', 'PersonAddress', 'personAddress',
+          'PersonEmail', 'personEmail', 'PersonRoles', 'personRoles',
+          'PersonCash', 'personCash', 'PersonShare', 'personShare',
+          'FounderName', 'founderName', 'FounderAddress', 'founderAddress',
+          'FounderEmail', 'founderEmail', 'FounderCash', 'founderCash',
+          'FounderShare', 'founderShare', 'DirectorName', 'directorName',
+          'DirectorAddress', 'directorAddress', 'DirectorEmail', 'directorEmail',
+        ];
+
+        const mappingsToValidate = repeatForPersons
+          ? variableMappings.filter(m => !PERSON_AUTO_VARIABLES.includes(m.variableName))
+          : variableMappings;
+
+        const validation = validateVariables(variables, mappingsToValidate);
 
         if (!validation.isValid) {
           // 경고하지만 계속 진행 (빈 값으로 처리됨)
@@ -568,8 +586,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // 3g. repeatForPersons 처리 - 인원별 문서 생성
-        const repeatForPersons = template.repeatForPersons as boolean | undefined;
+        // 3h. repeatForPersons 처리 - 인원별 문서 생성
         const selectedPersonIndices = repeatForSelections[templateId];
 
         if (repeatForPersons && selectedPersonIndices && selectedPersonIndices.length > 0) {
