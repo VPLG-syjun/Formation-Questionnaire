@@ -1,12 +1,12 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
 :root {
-  /* Primary Colors - Light Sky Blue */
-  --color-primary: #0ea5e9;
-  --color-primary-light: #38bdf8;
-  --color-primary-dark: #0284c7;
-  --color-accent: #06b6d4;
-  --color-accent-light: #22d3ee;
+  /* Primary Colors - Soft Sky Blue (White-toned) */
+  --color-primary: #7dd3fc;
+  --color-primary-light: #bae6fd;
+  --color-primary-dark: #38bdf8;
+  --color-accent: #67e8f9;
+  --color-accent-light: #a5f3fc;
 
   /* Neutral Colors */
   --color-white: #ffffff;
