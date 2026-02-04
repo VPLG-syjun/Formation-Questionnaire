@@ -22,10 +22,32 @@ const LOOP_CONTEXT_FIELDS = [
 
 // 이름 기반 자동 생성 변수 (설문 데이터에서 자동 추출)
 const NAME_BASED_AUTO_VARIABLES = [
+  // 회사 정보 변수
+  'companyAddress', 'CompanyAddress', 'COMPANYADDRESS',
+  'usAddress', 'USAddress', 'USADDRESS',
+  'krAddress', 'KRAddress', 'KRADDRESS',
+  'hasUSAddress',
+  'designator', 'Designator', 'DESIGNATOR',
+
+  // 날짜 관련 자동 생성 변수
+  'currentDate', 'CurrentDate', 'CURRENTDATE',
+  'currentDateShort', 'CurrentDateShort',
+  'currentDateISO', 'CurrentDateISO',
+  'currentDateKR', 'CurrentDateKR',
+  'currentTime', 'CurrentTime',
+  'currentYear', 'CurrentYear', 'CURRENTYEAR',
+  'documentNumber', 'DocumentNumber',
+  'COIDate', 'COIDateShort', 'COIDateISO', 'COIDateKR',
+  'SIGNDate', 'SIGNDateShort', 'SIGNDateISO', 'SIGNDateKR',
+  'SIGNYear', 'signYear', 'SIGNYEAR',
+
   // BankConsent 직책 변수
   'BankConsentTitle', 'bankConsentTitle',
   'BankConsent1Title', 'bankConsent1Title',
   'BankConsent2Title', 'bankConsent2Title',
+  'BankConsent', 'bankConsent',
+  'BankConsent1', 'bankConsent1',
+  'BankConsent2', 'bankConsent2',
 
   // 인원별 반복 생성 변수 (repeatForPersons 템플릿에서 사용)
   'PersonName', 'personName',
@@ -44,6 +66,16 @@ const NAME_BASED_AUTO_VARIABLES = [
   'DirectorName', 'directorName',
   'DirectorAddress', 'directorAddress',
   'DirectorEmail', 'directorEmail',
+
+  // 주식 관련 자동 생성 변수
+  'authorizedShares', 'AuthorizedShares',
+  'authorizedSharesRaw', 'AuthorizedSharesRaw',
+  'authorizedSharesEnglish', 'AuthorizedSharesEnglish',
+  'parValue', 'ParValue',
+  'parValueDollar', 'ParValueDollar',
+  'fairMarketValue', 'FairMarketValue',
+  'fairMarketValueDollar', 'FairMarketValueDollar',
+  'FMV', 'fmv',
 ];
 
 /**
