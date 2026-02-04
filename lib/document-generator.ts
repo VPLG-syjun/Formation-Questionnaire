@@ -1040,8 +1040,31 @@ export function transformSurveyToVariables(
     result['SIGNDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
   }
 
-  // 4. 반복 그룹 데이터 처리 (directors, founders 등)
-  console.log('[transformSurveyToVariables] Step 4: Processing repeating groups');
+  // 4. 회사 주소 처리 (미국 주소 우선, 없으면 한국 주소)
+  const hasUSAddressResponse = responses.find(r => r.questionId === 'hasUSAddress');
+  const usAddressResponse = responses.find(r => r.questionId === 'usAddress');
+  const krAddressResponse = responses.find(r => r.questionId === 'krAddress');
+
+  const hasUSAddress = hasUSAddressResponse?.value === 'yes';
+  const usAddress = typeof usAddressResponse?.value === 'string' ? usAddressResponse.value.trim() : '';
+  const krAddress = typeof krAddressResponse?.value === 'string' ? krAddressResponse.value.trim() : '';
+
+  // companyAddress: 미국 주소가 있으면 미국 주소, 없으면 한국 주소
+  const companyAddress = (hasUSAddress && usAddress) ? usAddress : krAddress;
+  result['companyAddress'] = companyAddress;
+  result['CompanyAddress'] = companyAddress;
+
+  // 개별 주소도 저장
+  result['usAddress'] = usAddress;
+  result['USAddress'] = usAddress;
+  result['krAddress'] = krAddress;
+  result['KRAddress'] = krAddress;
+  result['hasUSAddress'] = hasUSAddress ? 'true' : '';
+
+  console.log(`[transformSurveyToVariables] Company address: hasUS=${hasUSAddress}, selected="${companyAddress}"`);
+
+  // 5. 반복 그룹 데이터 처리 (directors, founders 등)
+  console.log('[transformSurveyToVariables] Step 5: Processing repeating groups');
   console.log('[transformSurveyToVariables] All responses questionIds:', responses.map(r => r.questionId));
 
   for (const response of responses) {
@@ -1165,7 +1188,7 @@ export function transformSurveyToVariables(
     }
   }
 
-  // 5. 관리자 설정 값 (Authorized Shares, Par Value, Fair Market Value) 처리
+  // 6. 관리자 설정 값 (Authorized Shares, Par Value, Fair Market Value) 처리
   const authSharesResponse = responses.find(r => r.questionId === '__authorizedShares');
   if (authSharesResponse?.value) {
     const rawValue = authSharesResponse.value;
@@ -1223,7 +1246,7 @@ export function transformSurveyToVariables(
     }
   }
 
-  // 6. 매핑된 변수 처리 (계산 변수 제외)
+  // 7. 매핑된 변수 처리 (계산 변수 제외)
   for (const mapping of variableMappings) {
     const variableKey = mapping.variableName;
 
@@ -1455,7 +1478,7 @@ export function transformSurveyToVariables(
     result[variableKey] = transformedValue;
   }
 
-  // 6. 계산 변수 처리 (다른 변수들이 모두 처리된 후)
+  // 8. 계산 변수 처리 (다른 변수들이 모두 처리된 후)
   console.log('[transformSurveyToVariables] Step 6: Processing calculated variables');
   console.log('[transformSurveyToVariables] Available variables for formula:', {
     Founder1Cash: result['Founder1Cash'],
@@ -1532,7 +1555,7 @@ export function transformSurveyToVariables(
     }
   }
 
-  // 7. BankConsent 이름에 대한 직책 자동 생성
+  // 9. BankConsent 이름에 대한 직책 자동 생성
   // BankConsent (회사 계좌 개설자)의 직책 조회
   const bankConsentResponse = responses.find(r => r.questionId === 'bankConsent');
   if (bankConsentResponse?.value && typeof bankConsentResponse.value === 'string') {
@@ -1563,9 +1586,9 @@ export function transformSurveyToVariables(
     console.log(`[transformSurveyToVariables] BankConsent2: ${bankConsent2Name}, Title: ${bankConsent2Title}`);
   }
 
-  // 8. Fallback 계산: Founder1Share가 없으면 자동 계산 시도
+  // 10. Fallback 계산: Founder1Share가 없으면 자동 계산 시도
   if (!result['Founder1Share'] && result['Founder1Cash'] && result['FMV']) {
-    console.log('[transformSurveyToVariables] Step 7: Fallback calculation for Founder1Share');
+    console.log('[transformSurveyToVariables] Step 10: Fallback calculation for Founder1Share');
     const founder1CashNum = parseFloat((result['Founder1Cash'] || '0').replace(/[$,]/g, ''));
     const fmvNum = parseFloat((result['FMV'] || '0').replace(/[$,]/g, ''));
 
