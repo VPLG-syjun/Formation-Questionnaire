@@ -85,7 +85,7 @@ export interface Template {
   displayName: string;
   category: string;
   isActive: boolean;
-  repeatFor?: 'founders' | 'directors' | '';  // 인원별 반복 생성 대상
+  repeatForPersons?: boolean;  // 인원별 반복 생성 여부
 }
 
 export interface TemplateSelection {

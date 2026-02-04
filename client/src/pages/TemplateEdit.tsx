@@ -136,7 +136,7 @@ export default function TemplateEdit() {
     name: '',
     displayName: '',
     category: '법인설립',
-    repeatFor: '' as '' | 'founders' | 'directors',  // 인원별 반복 생성 대상
+    repeatForPersons: false,  // 인원별 반복 생성 여부
   });
 
   // 변수 매핑
@@ -176,7 +176,7 @@ export default function TemplateEdit() {
         name: templateData.name,
         displayName: templateData.displayName,
         category: templateData.category,
-        repeatFor: templateData.repeatFor || '',
+        repeatForPersons: templateData.repeatForPersons || false,
       });
 
       // 변수 매핑 조회
@@ -538,20 +538,21 @@ export default function TemplateEdit() {
               ))}
             </select>
           </div>
-          <div className="form-group" style={{ flex: 0.7 }}>
-            <label>인원별 반복 생성</label>
-            <select
-              value={formData.repeatFor}
-              onChange={(e) => setFormData({ ...formData, repeatFor: e.target.value as '' | 'founders' | 'directors' })}
-            >
-              <option value="">사용 안함</option>
-              <option value="founders">주주(Founders)별 생성</option>
-              <option value="directors">이사(Directors)별 생성</option>
-            </select>
+          <div className="form-group" style={{ flex: 0.7, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input
+              type="checkbox"
+              id="repeatForPersons"
+              checked={formData.repeatForPersons}
+              onChange={(e) => setFormData({ ...formData, repeatForPersons: e.target.checked })}
+              style={{ width: '18px', height: '18px' }}
+            />
+            <label htmlFor="repeatForPersons" style={{ marginBottom: 0, cursor: 'pointer' }}>
+              인원별 반복 생성
+            </label>
           </div>
         </div>
 
-        {formData.repeatFor && (
+        {formData.repeatForPersons && (
           <div style={{
             marginTop: '12px',
             padding: '12px',
@@ -561,7 +562,11 @@ export default function TemplateEdit() {
             fontSize: '0.85rem',
             color: 'var(--color-info-dark, #004499)',
           }}>
-            <strong>인원별 반복 생성 활성화됨:</strong> 문서 생성 시 {formData.repeatFor === 'founders' ? '주주' : '이사'} 목록에서 선택한 인원 각각에 대해 개별 문서가 생성됩니다.
+            <strong>인원별 반복 생성 활성화됨:</strong> 문서 생성 시 설문에 등장한 모든 인원(주주, 이사, CEO, CFO, Corporate Secretary 등) 중 선택한 인원 각각에 대해 개별 문서가 생성됩니다.
+            <br />
+            <span style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
+              템플릿에서 사용할 변수: {'{PersonName}'}, {'{PersonAddress}'}, {'{PersonEmail}'}, {'{PersonRoles}'}
+            </span>
           </div>
         )}
 

@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const template = JSON.parse(templateData);
-      const { name, displayName, category, filename, filePath, isActive, repeatFor } = req.body;
+      const { name, displayName, category, filename, filePath, isActive, repeatForPersons } = req.body;
 
       if (name !== undefined) template.name = name;
       if (displayName !== undefined) template.displayName = displayName;
@@ -75,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (filename !== undefined) template.filename = filename;
       if (filePath !== undefined) template.filePath = filePath;
       if (isActive !== undefined) template.isActive = isActive;
-      if (repeatFor !== undefined) template.repeatFor = repeatFor; // 'founders', 'directors', 또는 null
+      if (repeatForPersons !== undefined) template.repeatForPersons = repeatForPersons; // boolean
 
       template.updatedAt = new Date().toISOString();
 

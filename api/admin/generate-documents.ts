@@ -88,21 +88,135 @@ function generateZipFilename(companyName: string): string {
 }
 
 /**
- * 설문에서 반복 대상 그룹 데이터 추출
+ * 설문에서 모든 인원과 직책 추출
  */
-function getRepeatGroupData(
-  responses: SurveyResponse[],
-  repeatFor: 'founders' | 'directors'
-): Array<{ name: string; [key: string]: string }> {
-  const groupResponse = responses.find(r => r.questionId === repeatFor);
-  if (!groupResponse || !Array.isArray(groupResponse.value)) {
-    return [];
+interface PersonWithRoles {
+  name: string;
+  roles: string[];
+  address?: string;
+  email?: string;
+  cash?: string;
+}
+
+function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
+  const personMap = new Map<string, PersonWithRoles>();
+
+  const getAnswer = (questionId: string): string | undefined => {
+    const answer = responses.find(r => r.questionId === questionId);
+    return typeof answer?.value === 'string' ? answer.value : undefined;
+  };
+
+  // 1. Directors (이사)
+  const directorsResponse = responses.find(r => r.questionId === 'directors');
+  if (directorsResponse && Array.isArray(directorsResponse.value)) {
+    for (const director of directorsResponse.value as Array<{ name?: string; address?: string; email?: string }>) {
+      const name = director.name?.trim();
+      if (!name) continue;
+
+      if (personMap.has(name)) {
+        personMap.get(name)!.roles.push('Director');
+        if (!personMap.get(name)!.address && director.address) personMap.get(name)!.address = director.address;
+        if (!personMap.get(name)!.email && director.email) personMap.get(name)!.email = director.email;
+      } else {
+        personMap.set(name, {
+          name,
+          roles: ['Director'],
+          address: director.address,
+          email: director.email,
+        });
+      }
+    }
   }
 
-  return groupResponse.value.map((item: Record<string, string>) => ({
-    name: item.name || item.founderName || item.directorName || 'Unknown',
-    ...item,
-  }));
+  // 2. Founders (창업자/주주)
+  const foundersResponse = responses.find(r => r.questionId === 'founders');
+  if (foundersResponse && Array.isArray(foundersResponse.value)) {
+    for (const founder of foundersResponse.value as Array<{ name?: string; address?: string; email?: string; cash?: string }>) {
+      const name = founder.name?.trim();
+      if (!name) continue;
+
+      if (personMap.has(name)) {
+        personMap.get(name)!.roles.push('Founder');
+        if (!personMap.get(name)!.address && founder.address) personMap.get(name)!.address = founder.address;
+        if (!personMap.get(name)!.email && founder.email) personMap.get(name)!.email = founder.email;
+        if (founder.cash) personMap.get(name)!.cash = founder.cash;
+      } else {
+        personMap.set(name, {
+          name,
+          roles: ['Founder'],
+          address: founder.address,
+          email: founder.email,
+          cash: founder.cash,
+        });
+      }
+    }
+  }
+
+  // 3. CEO
+  const ceoName = getAnswer('ceoName')?.trim();
+  if (ceoName) {
+    if (personMap.has(ceoName)) {
+      personMap.get(ceoName)!.roles.push('CEO');
+      if (!personMap.get(ceoName)!.address) personMap.get(ceoName)!.address = getAnswer('ceoAddress');
+      if (!personMap.get(ceoName)!.email) personMap.get(ceoName)!.email = getAnswer('ceoEmail');
+    } else {
+      personMap.set(ceoName, {
+        name: ceoName,
+        roles: ['CEO'],
+        address: getAnswer('ceoAddress'),
+        email: getAnswer('ceoEmail'),
+      });
+    }
+  }
+
+  // 4. CFO
+  const cfoName = getAnswer('cfoName')?.trim();
+  if (cfoName) {
+    if (personMap.has(cfoName)) {
+      personMap.get(cfoName)!.roles.push('CFO');
+      if (!personMap.get(cfoName)!.address) personMap.get(cfoName)!.address = getAnswer('cfoAddress');
+      if (!personMap.get(cfoName)!.email) personMap.get(cfoName)!.email = getAnswer('cfoEmail');
+    } else {
+      personMap.set(cfoName, {
+        name: cfoName,
+        roles: ['CFO'],
+        address: getAnswer('cfoAddress'),
+        email: getAnswer('cfoEmail'),
+      });
+    }
+  }
+
+  // 5. Corporate Secretary
+  const csName = getAnswer('csName')?.trim();
+  if (csName) {
+    if (personMap.has(csName)) {
+      personMap.get(csName)!.roles.push('Corporate Secretary');
+      if (!personMap.get(csName)!.address) personMap.get(csName)!.address = getAnswer('csAddress');
+      if (!personMap.get(csName)!.email) personMap.get(csName)!.email = getAnswer('csEmail');
+    } else {
+      personMap.set(csName, {
+        name: csName,
+        roles: ['Corporate Secretary'],
+        address: getAnswer('csAddress'),
+        email: getAnswer('csEmail'),
+      });
+    }
+  }
+
+  // 6. Chairman (의장)
+  const chairmanName = getAnswer('chairmanName')?.trim();
+  if (chairmanName) {
+    if (personMap.has(chairmanName)) {
+      personMap.get(chairmanName)!.roles.push('Chairman');
+    } else {
+      personMap.set(chairmanName, {
+        name: chairmanName,
+        roles: ['Chairman'],
+      });
+    }
+  }
+
+  return Array.from(personMap.values());
 }
 
 /**
@@ -110,44 +224,45 @@ function getRepeatGroupData(
  */
 function createPersonVariables(
   baseVariables: Record<string, string>,
-  person: { name: string; [key: string]: string },
-  personIndex: number,
-  repeatFor: 'founders' | 'directors'
+  person: PersonWithRoles
 ): Record<string, string> {
   const personVars: Record<string, string> = { ...baseVariables };
 
-  // 개인 정보 변수 추가
-  if (repeatFor === 'founders') {
-    // 창업자별 변수
+  // 공통 인원 변수
+  personVars['PersonName'] = person.name || '';
+  personVars['personName'] = person.name || '';
+  personVars['PersonAddress'] = person.address || '';
+  personVars['personAddress'] = person.address || '';
+  personVars['PersonEmail'] = person.email || '';
+  personVars['personEmail'] = person.email || '';
+  personVars['PersonRoles'] = person.roles.join(' / ');
+  personVars['personRoles'] = person.roles.join(' / ');
+
+  // 출자금 (창업자인 경우)
+  if (person.cash) {
+    personVars['PersonCash'] = person.cash;
+    personVars['personCash'] = person.cash;
+  }
+
+  // 기존 호환성을 위한 Founder/Director 변수도 설정
+  if (person.roles.includes('Founder')) {
     personVars['FounderName'] = person.name || '';
     personVars['founderName'] = person.name || '';
-    personVars['FounderAddress'] = person.address || person.founderAddress || '';
-    personVars['founderAddress'] = person.address || person.founderAddress || '';
-    personVars['FounderEmail'] = person.email || person.founderEmail || '';
-    personVars['founderEmail'] = person.email || person.founderEmail || '';
-    personVars['FounderCash'] = person.cash || person.founderCash || '';
-    personVars['founderCash'] = person.cash || person.founderCash || '';
+    personVars['FounderAddress'] = person.address || '';
+    personVars['founderAddress'] = person.address || '';
+    personVars['FounderEmail'] = person.email || '';
+    personVars['founderEmail'] = person.email || '';
+    personVars['FounderCash'] = person.cash || '';
+    personVars['founderCash'] = person.cash || '';
+  }
 
-    // 인덱스 변수도 추가 (1-based)
-    const idx = personIndex + 1;
-    personVars[`Founder${idx}Name`] = person.name || '';
-    personVars[`Founder${idx}Address`] = person.address || person.founderAddress || '';
-    personVars[`Founder${idx}Email`] = person.email || person.founderEmail || '';
-    personVars[`Founder${idx}Cash`] = person.cash || person.founderCash || '';
-  } else if (repeatFor === 'directors') {
-    // 이사별 변수
+  if (person.roles.includes('Director')) {
     personVars['DirectorName'] = person.name || '';
     personVars['directorName'] = person.name || '';
-    personVars['DirectorAddress'] = person.address || person.directorAddress || '';
-    personVars['directorAddress'] = person.address || person.directorAddress || '';
-    personVars['DirectorEmail'] = person.email || person.directorEmail || '';
-    personVars['directorEmail'] = person.email || person.directorEmail || '';
-
-    // 인덱스 변수도 추가 (1-based)
-    const idx = personIndex + 1;
-    personVars[`Director${idx}Name`] = person.name || '';
-    personVars[`Director${idx}Address`] = person.address || person.directorAddress || '';
-    personVars[`Director${idx}Email`] = person.email || person.directorEmail || '';
+    personVars['DirectorAddress'] = person.address || '';
+    personVars['directorAddress'] = person.address || '';
+    personVars['DirectorEmail'] = person.email || '';
+    personVars['directorEmail'] = person.email || '';
   }
 
   return personVars;
@@ -409,24 +524,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // 3g. repeatFor 처리 - 인원별 문서 생성
-        const repeatFor = template.repeatFor as 'founders' | 'directors' | '' | undefined;
+        // 3g. repeatForPersons 처리 - 인원별 문서 생성
+        const repeatForPersons = template.repeatForPersons as boolean | undefined;
         const selectedPersonIndices = repeatForSelections[templateId];
 
-        if (repeatFor && selectedPersonIndices && selectedPersonIndices.length > 0) {
-          // 인원별 문서 생성
-          const persons = getRepeatGroupData(responses, repeatFor);
-          console.log(`[DEBUG] Template ${templateId} - repeatFor: ${repeatFor}, selected: ${selectedPersonIndices.join(',')}, persons: ${persons.length}`);
+        if (repeatForPersons && selectedPersonIndices && selectedPersonIndices.length > 0) {
+          // 모든 인원 추출
+          const allPersons = extractAllPersons(responses);
+          console.log(`[DEBUG] Template ${templateId} - repeatForPersons: true, selected: ${selectedPersonIndices.join(',')}, allPersons: ${allPersons.length}`);
 
           for (const personIndex of selectedPersonIndices) {
-            const person = persons[personIndex];
+            const person = allPersons[personIndex];
             if (!person) {
               console.warn(`[WARN] Person at index ${personIndex} not found for template ${templateId}`);
               continue;
             }
 
             // 개인별 변수 생성
-            const personVariables = createPersonVariables(variables, person, personIndex, repeatFor);
+            const personVariables = createPersonVariables(variables, person);
 
             try {
               // docxtemplater로 문서 생성

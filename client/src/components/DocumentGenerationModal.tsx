@@ -102,15 +102,15 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
       selection.suggested.forEach(t => requiredIds.add(t.id));
       setSelectedIds(requiredIds);
 
-      // repeatFor가 설정된 템플릿에 대해 기본 인원 선택 초기화
+      // repeatForPersons가 설정된 템플릿에 대해 기본 인원 선택 초기화
       const allTemplates = [...selection.required, ...selection.suggested, ...selection.optional];
       const initialRepeatSelections: Record<string, number[]> = {};
+      const persons = extractAllPersonsFromSurvey(surveyData);
 
       allTemplates.forEach(template => {
-        if (template.repeatFor) {
-          const groupData = getRepeatGroupData(surveyData, template.repeatFor);
+        if (template.repeatForPersons) {
           // 기본적으로 모든 인원 선택
-          initialRepeatSelections[template.id] = groupData.map((_, idx) => idx);
+          initialRepeatSelections[template.id] = persons.map((_, idx) => idx);
         }
       });
 
@@ -122,14 +122,138 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
     }
   };
 
-  // 설문 데이터에서 반복 그룹 데이터 추출
-  const getRepeatGroupData = (surveyData: Survey, repeatFor: string): Array<{ name: string; [key: string]: string }> => {
-    const answer = surveyData.answers?.find(a => a.questionId === repeatFor);
-    if (answer && Array.isArray(answer.value)) {
-      return answer.value as Array<{ name: string; [key: string]: string }>;
+  // 설문에서 등장한 모든 인원과 직책 추출
+  interface PersonWithRoles {
+    name: string;
+    roles: string[];
+    address?: string;
+    email?: string;
+    cash?: string;  // 창업자인 경우 출자금
+  }
+
+  const extractAllPersonsFromSurvey = (surveyData: Survey): PersonWithRoles[] => {
+    const personMap = new Map<string, PersonWithRoles>();
+
+    const getAnswer = (questionId: string): string | undefined => {
+      const answer = surveyData.answers?.find(a => a.questionId === questionId);
+      return answer?.value as string | undefined;
+    };
+
+    // 1. Directors (이사)
+    const directorsAnswer = surveyData.answers?.find(a => a.questionId === 'directors');
+    if (directorsAnswer && Array.isArray(directorsAnswer.value)) {
+      for (const director of directorsAnswer.value as Array<{ name: string; address?: string; email?: string }>) {
+        const name = director.name?.trim();
+        if (!name) continue;
+
+        if (personMap.has(name)) {
+          personMap.get(name)!.roles.push('Director');
+          if (!personMap.get(name)!.address && director.address) personMap.get(name)!.address = director.address;
+          if (!personMap.get(name)!.email && director.email) personMap.get(name)!.email = director.email;
+        } else {
+          personMap.set(name, {
+            name,
+            roles: ['Director'],
+            address: director.address,
+            email: director.email,
+          });
+        }
+      }
     }
-    return [];
+
+    // 2. Founders (창업자/주주)
+    const foundersAnswer = surveyData.answers?.find(a => a.questionId === 'founders');
+    if (foundersAnswer && Array.isArray(foundersAnswer.value)) {
+      for (const founder of foundersAnswer.value as Array<{ name: string; address?: string; email?: string; cash?: string }>) {
+        const name = founder.name?.trim();
+        if (!name) continue;
+
+        if (personMap.has(name)) {
+          personMap.get(name)!.roles.push('Founder');
+          if (!personMap.get(name)!.address && founder.address) personMap.get(name)!.address = founder.address;
+          if (!personMap.get(name)!.email && founder.email) personMap.get(name)!.email = founder.email;
+          if (founder.cash) personMap.get(name)!.cash = founder.cash;
+        } else {
+          personMap.set(name, {
+            name,
+            roles: ['Founder'],
+            address: founder.address,
+            email: founder.email,
+            cash: founder.cash,
+          });
+        }
+      }
+    }
+
+    // 3. CEO
+    const ceoName = getAnswer('ceoName')?.trim();
+    if (ceoName) {
+      if (personMap.has(ceoName)) {
+        personMap.get(ceoName)!.roles.push('CEO');
+        if (!personMap.get(ceoName)!.address) personMap.get(ceoName)!.address = getAnswer('ceoAddress');
+        if (!personMap.get(ceoName)!.email) personMap.get(ceoName)!.email = getAnswer('ceoEmail');
+      } else {
+        personMap.set(ceoName, {
+          name: ceoName,
+          roles: ['CEO'],
+          address: getAnswer('ceoAddress'),
+          email: getAnswer('ceoEmail'),
+        });
+      }
+    }
+
+    // 4. CFO
+    const cfoName = getAnswer('cfoName')?.trim();
+    if (cfoName) {
+      if (personMap.has(cfoName)) {
+        personMap.get(cfoName)!.roles.push('CFO');
+        if (!personMap.get(cfoName)!.address) personMap.get(cfoName)!.address = getAnswer('cfoAddress');
+        if (!personMap.get(cfoName)!.email) personMap.get(cfoName)!.email = getAnswer('cfoEmail');
+      } else {
+        personMap.set(cfoName, {
+          name: cfoName,
+          roles: ['CFO'],
+          address: getAnswer('cfoAddress'),
+          email: getAnswer('cfoEmail'),
+        });
+      }
+    }
+
+    // 5. Corporate Secretary
+    const csName = getAnswer('csName')?.trim();
+    if (csName) {
+      if (personMap.has(csName)) {
+        personMap.get(csName)!.roles.push('Corporate Secretary');
+        if (!personMap.get(csName)!.address) personMap.get(csName)!.address = getAnswer('csAddress');
+        if (!personMap.get(csName)!.email) personMap.get(csName)!.email = getAnswer('csEmail');
+      } else {
+        personMap.set(csName, {
+          name: csName,
+          roles: ['Corporate Secretary'],
+          address: getAnswer('csAddress'),
+          email: getAnswer('csEmail'),
+        });
+      }
+    }
+
+    // 6. Chairman (의장)
+    const chairmanName = getAnswer('chairmanName')?.trim();
+    if (chairmanName) {
+      if (personMap.has(chairmanName)) {
+        personMap.get(chairmanName)!.roles.push('Chairman');
+      } else {
+        personMap.set(chairmanName, {
+          name: chairmanName,
+          roles: ['Chairman'],
+        });
+      }
+    }
+
+    return Array.from(personMap.values());
   };
+
+  // 인원 목록 (survey가 로드되면 계산)
+  const allPersons = survey ? extractAllPersonsFromSurvey(survey) : [];
 
   // 인원 선택 토글
   const handleTogglePersonSelection = (templateId: string, personIndex: number) => {
@@ -144,13 +268,12 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
   };
 
   // 전체 인원 선택/해제
-  const handleSelectAllPersons = (templateId: string, repeatFor: string, selectAll: boolean) => {
+  const handleSelectAllPersons = (templateId: string, selectAll: boolean) => {
     if (!survey) return;
-    const groupData = getRepeatGroupData(survey, repeatFor);
     if (selectAll) {
       setRepeatForSelections(prev => ({
         ...prev,
-        [templateId]: groupData.map((_, idx) => idx),
+        [templateId]: allPersons.map((_, idx) => idx),
       }));
     } else {
       setRepeatForSelections(prev => ({
@@ -513,10 +636,10 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                   ...templateSelection.optional,
                 ];
                 const repeatTemplates = allTemplates.filter(
-                  t => t.repeatFor && selectedIds.has(t.id)
+                  t => t.repeatForPersons && selectedIds.has(t.id)
                 );
 
-                if (repeatTemplates.length === 0 || !survey) return null;
+                if (repeatTemplates.length === 0 || !survey || allPersons.length === 0) return null;
 
                 return (
                   <div className="template-section" style={{ marginTop: '20px' }}>
@@ -529,8 +652,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                     </p>
 
                     {repeatTemplates.map(template => {
-                      const groupData = getRepeatGroupData(survey, template.repeatFor!);
-                      const selectedPersons = repeatForSelections[template.id] || [];
+                      const selectedPersonIndices = repeatForSelections[template.id] || [];
 
                       return (
                         <div key={template.id} style={{
@@ -546,14 +668,14 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline"
-                                onClick={() => handleSelectAllPersons(template.id, template.repeatFor!, true)}
+                                onClick={() => handleSelectAllPersons(template.id, true)}
                               >
                                 전체 선택
                               </button>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline"
-                                onClick={() => handleSelectAllPersons(template.id, template.repeatFor!, false)}
+                                onClick={() => handleSelectAllPersons(template.id, false)}
                               >
                                 전체 해제
                               </button>
@@ -561,7 +683,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                           </div>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {groupData.map((person, idx) => (
+                            {allPersons.map((person, idx) => (
                               <label
                                 key={idx}
                                 style={{
@@ -569,27 +691,25 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                                   alignItems: 'center',
                                   gap: '10px',
                                   padding: '8px 12px',
-                                  background: selectedPersons.includes(idx) ? 'var(--color-primary-light)' : 'white',
-                                  border: `1px solid ${selectedPersons.includes(idx) ? 'var(--color-primary)' : 'var(--color-gray-300)'}`,
+                                  background: selectedPersonIndices.includes(idx) ? 'var(--color-primary-light)' : 'white',
+                                  border: `1px solid ${selectedPersonIndices.includes(idx) ? 'var(--color-primary)' : 'var(--color-gray-300)'}`,
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                 }}
                               >
                                 <input
                                   type="checkbox"
-                                  checked={selectedPersons.includes(idx)}
+                                  checked={selectedPersonIndices.includes(idx)}
                                   onChange={() => handleTogglePersonSelection(template.id, idx)}
                                   style={{ width: '16px', height: '16px' }}
                                 />
-                                <span style={{ fontWeight: 500 }}>{person.name || `${template.repeatFor === 'founders' ? '주주' : '이사'} ${idx + 1}`}</span>
+                                <span style={{ fontWeight: 500 }}>{person.name}</span>
+                                <span style={{ color: 'var(--color-gray-500)', fontSize: '0.85rem' }}>
+                                  {person.roles.join(' / ')}
+                                </span>
                                 {person.cash && (
                                   <span style={{ color: 'var(--color-gray-500)', fontSize: '0.85rem' }}>
                                     (${Number(person.cash).toLocaleString()})
-                                  </span>
-                                )}
-                                {person.email && (
-                                  <span style={{ color: 'var(--color-gray-500)', fontSize: '0.85rem' }}>
-                                    {person.email}
                                   </span>
                                 )}
                               </label>
@@ -597,7 +717,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                           </div>
 
                           <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--color-gray-500)' }}>
-                            {selectedPersons.length}명 선택됨 → {selectedPersons.length}개 문서 생성 예정
+                            {selectedPersonIndices.length}명 선택됨 → {selectedPersonIndices.length}개 문서 생성 예정
                           </div>
                         </div>
                       );
