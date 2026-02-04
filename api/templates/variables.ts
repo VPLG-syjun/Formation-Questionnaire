@@ -274,46 +274,103 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: '변수명과 설정이 필요합니다.' });
         }
 
-        // 모든 변수 조회
+        console.log(`[applyToAll] Applying settings for variable: "${variableName}"`);
+
+        // 1. 모든 템플릿 조회
+        const allTemplates = await client.hGetAll(TEMPLATES_KEY);
+        const allTemplateFiles = await client.hGetAll(TEMPLATE_FILES_KEY);
         const allVariables = await client.hGetAll(TEMPLATE_VARIABLES_KEY);
-        let updatedCount = 0;
-        const updatedTemplates: string[] = [];
 
-        console.log(`[applyToAll] Searching for variable: "${variableName}"`);
-        console.log(`[applyToAll] Total variables in DB: ${Object.keys(allVariables).length}`);
-
-        // 같은 변수명을 가진 모든 변수 업데이트
+        // 기존 변수 매핑을 templateId별로 정리
+        const existingMappings: Record<string, { varId: string; variable: Record<string, unknown> }> = {};
         for (const [varId, varData] of Object.entries(allVariables)) {
           const variable = JSON.parse(varData);
           if (variable.variableName === variableName) {
-            const updatedVariable = {
-              ...variable,
-              questionId: settings.questionId,
-              dataType: settings.dataType,
-              transformRule: settings.transformRule,
-              required: settings.required,
-            };
-
-            // 계산 변수인 경우 formula 저장
-            if (settings.questionId === '__calculated__' && settings.formula) {
-              updatedVariable.formula = settings.formula;
-            } else {
-              delete updatedVariable.formula;
-            }
-
-            await client.hSet(TEMPLATE_VARIABLES_KEY, varId, JSON.stringify(updatedVariable));
-            updatedCount++;
-            updatedTemplates.push(variable.templateId);
-            console.log(`[applyToAll] Updated variable in template: ${variable.templateId}`);
+            existingMappings[variable.templateId] = { varId, variable };
           }
         }
 
-        console.log(`[applyToAll] Updated ${updatedCount} variables in templates: ${updatedTemplates.join(', ')}`);
+        let updatedCount = 0;
+        let createdCount = 0;
+        const updatedTemplates: string[] = [];
+        const createdTemplates: string[] = [];
+
+        // 2. 각 템플릿의 DOCX 파일을 스캔하여 변수 확인
+        for (const [templateId, templateData] of Object.entries(allTemplates)) {
+          const template = JSON.parse(templateData);
+          if (!template.isActive) continue; // 비활성 템플릿 스킵
+
+          const fileData = allTemplateFiles[templateId];
+          if (!fileData) continue; // 파일 없는 템플릿 스킵
+
+          try {
+            const templateBuffer = Buffer.from(fileData, 'base64');
+            const scannedVariables = extractVariablesFromDocx(templateBuffer);
+
+            // 해당 변수가 템플릿에 존재하는지 확인
+            if (!scannedVariables.includes(variableName)) {
+              continue; // 변수가 없으면 스킵
+            }
+
+            // 3. 기존 매핑이 있으면 업데이트, 없으면 생성
+            if (existingMappings[templateId]) {
+              // 업데이트
+              const { varId, variable } = existingMappings[templateId];
+              const updatedVariable = {
+                ...variable,
+                questionId: settings.questionId,
+                dataType: settings.dataType,
+                transformRule: settings.transformRule,
+                required: settings.required,
+              };
+
+              if (settings.questionId === '__calculated__' && settings.formula) {
+                updatedVariable.formula = settings.formula;
+              } else {
+                delete updatedVariable.formula;
+              }
+
+              await client.hSet(TEMPLATE_VARIABLES_KEY, varId, JSON.stringify(updatedVariable));
+              updatedCount++;
+              updatedTemplates.push(template.displayName || template.name);
+              console.log(`[applyToAll] Updated in template: ${template.displayName || template.name}`);
+            } else {
+              // 새로 생성
+              const newVarId = uuidv4();
+              const newVariable: Record<string, unknown> = {
+                id: newVarId,
+                templateId,
+                variableName,
+                questionId: settings.questionId,
+                dataType: settings.dataType || 'text',
+                transformRule: settings.transformRule || 'none',
+                required: settings.required || false,
+              };
+
+              if (settings.questionId === '__calculated__' && settings.formula) {
+                newVariable.formula = settings.formula;
+              }
+
+              await client.hSet(TEMPLATE_VARIABLES_KEY, newVarId, JSON.stringify(newVariable));
+              createdCount++;
+              createdTemplates.push(template.displayName || template.name);
+              console.log(`[applyToAll] Created in template: ${template.displayName || template.name}`);
+            }
+          } catch (err) {
+            console.error(`[applyToAll] Error processing template ${templateId}:`, err);
+          }
+        }
+
+        const totalCount = updatedCount + createdCount;
+        console.log(`[applyToAll] Total: ${totalCount} (updated: ${updatedCount}, created: ${createdCount})`);
 
         return res.status(200).json({
-          message: `${updatedCount}개의 템플릿에 적용되었습니다.`,
+          message: `${totalCount}개의 템플릿에 적용되었습니다. (업데이트: ${updatedCount}, 새로 생성: ${createdCount})`,
           updatedCount,
+          createdCount,
+          totalCount,
           updatedTemplates,
+          createdTemplates,
         });
       }
 

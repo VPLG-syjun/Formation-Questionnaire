@@ -425,7 +425,14 @@ export default function TemplateEdit() {
       if (!res.ok) throw new Error('전체 적용에 실패했습니다.');
 
       const result = await res.json();
-      alert(`${result.updatedCount}개의 템플릿에 적용되었습니다.`);
+      let message = `${result.totalCount || result.updatedCount}개의 템플릿에 적용되었습니다.`;
+      if (result.createdCount > 0) {
+        message += `\n(업데이트: ${result.updatedCount}, 새로 생성: ${result.createdCount})`;
+      }
+      if (result.createdTemplates?.length > 0) {
+        message += `\n\n새로 생성된 템플릿:\n${result.createdTemplates.join('\n')}`;
+      }
+      alert(message);
     } catch (err) {
       alert(err instanceof Error ? err.message : '전체 적용에 실패했습니다.');
     }
