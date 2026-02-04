@@ -359,7 +359,16 @@ export default function SurveyForm() {
     setIsSubmitting(true);
 
     try {
-      const surveyAnswers: SurveyAnswer[] = Object.entries(answers).map(([questionId, value]) => ({
+      // 답변 복사본 생성 (원본 수정 방지)
+      const processedAnswers = { ...answers };
+
+      // designator 처리: "custom" 선택 시 직접 입력 값 사용
+      if (processedAnswers.designator === 'custom' && processedAnswers.designatorCustom) {
+        processedAnswers.designator = processedAnswers.designatorCustom;
+        delete processedAnswers.designatorCustom; // 불필요한 필드 제거
+      }
+
+      const surveyAnswers: SurveyAnswer[] = Object.entries(processedAnswers).map(([questionId, value]) => ({
         questionId,
         value,
       }));
