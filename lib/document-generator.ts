@@ -780,22 +780,31 @@ export function formatRolesAsTitle(roles: string[]): string {
  * 특정 이름의 직책을 공식 명칭 문자열로 반환
  * @param name - 조회할 이름
  * @param responses - 설문 응답 배열
- * @param officerOnly - true이면 임원 직책만 반환 (CEO, CFO, Corporate Secretary)
  * @returns 공식 명칭 문자열 (예: 'Chief Executive Officer and Chief Financial Officer')
+ *
+ * 우선순위: Officer 직책 (CEO, CFO, Corporate Secretary) 먼저, 없으면 Director
  */
 export function getTitleForName(
   name: string,
-  responses: SurveyResponse[],
-  officerOnly: boolean = true
+  responses: SurveyResponse[]
 ): string {
   const allRoles = getRolesForName(name, responses);
 
-  // 임원 직책만 필터링 (기본값)
-  const roles = officerOnly
-    ? allRoles.filter(role => OFFICER_ROLES.includes(role))
-    : allRoles;
+  // 1. 먼저 Officer 직책만 필터링
+  const officerRoles = allRoles.filter(role => OFFICER_ROLES.includes(role));
 
-  return formatRolesAsTitle(roles);
+  // 2. Officer 직책이 있으면 그것만 반환
+  if (officerRoles.length > 0) {
+    return formatRolesAsTitle(officerRoles);
+  }
+
+  // 3. Officer 직책이 없으면 Director 확인
+  if (allRoles.includes('Director')) {
+    return ROLE_FULL_NAMES['Director'] || 'Director';
+  }
+
+  // 4. 아무 직책도 없으면 빈 문자열
+  return '';
 }
 
 // ============================================
