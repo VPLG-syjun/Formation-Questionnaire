@@ -1033,11 +1033,13 @@ export function transformSurveyToVariables(
     result['SIGNDateShort'] = formatDate(signDateValue, 'MM/DD/YYYY');
     result['SIGNDateISO'] = formatDate(signDateValue, 'YYYY-MM-DD');
     result['SIGNDateKR'] = formatDate(signDateValue, 'YYYY년 MM월 DD일');
+    result['SIGNYear'] = formatDate(signDateValue, 'YYYY');
   } else {
     result['SIGNDate'] = getCurrentDate('MMMM D, YYYY');
     result['SIGNDateShort'] = getCurrentDate('MM/DD/YYYY');
     result['SIGNDateISO'] = getCurrentDate('YYYY-MM-DD');
     result['SIGNDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
+    result['SIGNYear'] = getCurrentDate('YYYY');
   }
 
   // 4. 회사 주소 처리 (미국 주소 우선, 없으면 한국 주소)
