@@ -228,7 +228,15 @@ function createPersonVariables(
 ): Record<string, string> {
   const personVars: Record<string, string> = { ...baseVariables };
 
-  // 공통 인원 변수
+  // 디버깅: 인원 정보 로깅
+  console.log(`[DEBUG] createPersonVariables for: ${person.name}`, {
+    roles: person.roles,
+    address: person.address || '(none)',
+    email: person.email || '(none)',
+    cash: person.cash || '(none)',
+  });
+
+  // 공통 인원 변수 (항상 설정, 빈 문자열 포함)
   personVars['PersonName'] = person.name || '';
   personVars['personName'] = person.name || '';
   personVars['PersonAddress'] = person.address || '';
@@ -238,10 +246,23 @@ function createPersonVariables(
   personVars['PersonRoles'] = person.roles.join(' / ');
   personVars['personRoles'] = person.roles.join(' / ');
 
-  // 출자금 (창업자인 경우)
-  if (person.cash) {
-    personVars['PersonCash'] = person.cash;
-    personVars['personCash'] = person.cash;
+  // 출자금 (항상 설정 - 빈 문자열 허용)
+  personVars['PersonCash'] = person.cash || '';
+  personVars['personCash'] = person.cash || '';
+
+  // PersonShare 계산: PersonCash / FMV
+  // FMV는 baseVariables에서 가져옴 (fairMarketValue 또는 FMV)
+  const fmv = parseFloat(baseVariables['fairMarketValue'] || baseVariables['FMV'] || '0');
+  const cash = parseFloat(person.cash || '0');
+  if (fmv > 0 && cash > 0) {
+    const share = Math.floor(cash / fmv);  // 정수 주식 수
+    personVars['PersonShare'] = share.toString();
+    personVars['personShare'] = share.toString();
+    console.log(`[DEBUG] PersonShare calculated: ${cash} / ${fmv} = ${share}`);
+  } else {
+    personVars['PersonShare'] = '';
+    personVars['personShare'] = '';
+    console.log(`[DEBUG] PersonShare not calculable: cash=${cash}, fmv=${fmv}`);
   }
 
   // 기존 호환성을 위한 Founder/Director 변수도 설정
@@ -254,6 +275,9 @@ function createPersonVariables(
     personVars['founderEmail'] = person.email || '';
     personVars['FounderCash'] = person.cash || '';
     personVars['founderCash'] = person.cash || '';
+    // FounderShare도 동일하게 설정
+    personVars['FounderShare'] = personVars['PersonShare'];
+    personVars['founderShare'] = personVars['personShare'];
   }
 
   if (person.roles.includes('Director')) {
@@ -264,6 +288,14 @@ function createPersonVariables(
     personVars['DirectorEmail'] = person.email || '';
     personVars['directorEmail'] = person.email || '';
   }
+
+  // 디버깅: 최종 Person 변수 로깅
+  console.log(`[DEBUG] Final Person variables:`, {
+    PersonName: personVars['PersonName'],
+    PersonAddress: personVars['PersonAddress'],
+    PersonCash: personVars['PersonCash'],
+    PersonShare: personVars['PersonShare'],
+  });
 
   return personVars;
 }

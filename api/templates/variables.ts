@@ -33,12 +33,14 @@ const NAME_BASED_AUTO_VARIABLES = [
   'PersonEmail', 'personEmail',
   'PersonRoles', 'personRoles',
   'PersonCash', 'personCash',
+  'PersonShare', 'personShare',  // PersonCash / FMV 자동 계산
 
   // 기존 호환성 변수 (인원별 생성 시 자동 매핑)
   'FounderName', 'founderName',
   'FounderAddress', 'founderAddress',
   'FounderEmail', 'founderEmail',
   'FounderCash', 'founderCash',
+  'FounderShare', 'founderShare',  // Founder용 PersonShare
   'DirectorName', 'directorName',
   'DirectorAddress', 'directorAddress',
   'DirectorEmail', 'directorEmail',
