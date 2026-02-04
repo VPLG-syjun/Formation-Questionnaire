@@ -90,6 +90,37 @@ export const questionSections: QuestionSection[] = [
         documentField: 'companyName3',
       },
       {
+        id: 'designator',
+        type: 'dropdown',
+        text: '회사명 접미사 (Designator)',
+        description: '회사명 뒤에 붙을 접미사를 선택해주세요.',
+        required: true,
+        conditionalOn: {
+          questionId: 'proceedWithCorp',
+          values: ['yes'],
+        },
+        options: [
+          { value: 'Inc.', label: 'Inc. (Recommended)' },
+          { value: 'Incorporated', label: 'Incorporated' },
+          { value: 'Corp.', label: 'Corp.' },
+          { value: 'Corporation', label: 'Corporation' },
+          { value: 'custom', label: '직접 입력' },
+        ],
+        documentField: 'designator',
+      },
+      {
+        id: 'designatorCustom',
+        type: 'text',
+        text: '접미사 직접 입력',
+        placeholder: '희망하는 접미사를 입력해주세요',
+        required: true,
+        conditionalOn: {
+          questionId: 'designator',
+          values: ['custom'],
+        },
+        documentField: 'designatorCustom',
+      },
+      {
         id: 'info',
         type: 'text',
         text: '회사에서 제공하는 상품 또는 서비스에 대해 설명해주세요.',
