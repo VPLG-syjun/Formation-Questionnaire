@@ -322,6 +322,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             // 3. 기존 매핑이 있으면 업데이트, 없으면 생성
+            const formula = (settings as { formula?: string }).formula;
+
             if (existingMappings[templateId]) {
               // 업데이트
               const { varId, variable } = existingMappings[templateId];
@@ -333,8 +335,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 required: settings.required,
               };
 
-              if (settings.questionId === '__calculated__' && settings.formula) {
-                updatedVariable.formula = settings.formula;
+              if (settings.questionId === '__calculated__' && formula) {
+                updatedVariable.formula = formula;
               } else {
                 delete updatedVariable.formula;
               }
@@ -356,8 +358,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 required: settings.required || false,
               };
 
-              if (settings.questionId === '__calculated__' && settings.formula) {
-                newVariable.formula = settings.formula;
+              if (settings.questionId === '__calculated__' && formula) {
+                newVariable.formula = formula;
               }
 
               await client.hSet(TEMPLATE_VARIABLES_KEY, newVarId, JSON.stringify(newVariable));
