@@ -277,6 +277,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // 모든 변수 조회
         const allVariables = await client.hGetAll(TEMPLATE_VARIABLES_KEY);
         let updatedCount = 0;
+        const updatedTemplates: string[] = [];
+
+        console.log(`[applyToAll] Searching for variable: "${variableName}"`);
+        console.log(`[applyToAll] Total variables in DB: ${Object.keys(allVariables).length}`);
 
         // 같은 변수명을 가진 모든 변수 업데이트
         for (const [varId, varData] of Object.entries(allVariables)) {
@@ -299,12 +303,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             await client.hSet(TEMPLATE_VARIABLES_KEY, varId, JSON.stringify(updatedVariable));
             updatedCount++;
+            updatedTemplates.push(variable.templateId);
+            console.log(`[applyToAll] Updated variable in template: ${variable.templateId}`);
           }
         }
+
+        console.log(`[applyToAll] Updated ${updatedCount} variables in templates: ${updatedTemplates.join(', ')}`);
 
         return res.status(200).json({
           message: `${updatedCount}개의 템플릿에 적용되었습니다.`,
           updatedCount,
+          updatedTemplates,
         });
       }
 
