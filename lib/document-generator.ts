@@ -670,6 +670,122 @@ export function generateArrayHelperVariables(
 }
 
 // ============================================
+// 이름 → 직책 조회 유틸리티
+// ============================================
+
+/**
+ * 직책 약어를 공식 명칭으로 변환
+ */
+const ROLE_FULL_NAMES: Record<string, string> = {
+  'CEO': 'Chief Executive Officer',
+  'CFO': 'Chief Financial Officer',
+  'Corporate Secretary': 'Secretary',
+  'CS': 'Secretary',
+  'Director': 'Director',
+  'Founder': 'Shareholder',
+  'Chairman': 'Chairman of the Board',
+};
+
+/**
+ * 설문 응답에서 특정 이름의 모든 직책 조회
+ * @param name - 조회할 이름
+ * @param responses - 설문 응답 배열
+ * @returns 직책 배열 (예: ['CEO', 'CFO', 'Director'])
+ */
+export function getRolesForName(
+  name: string,
+  responses: SurveyResponse[]
+): string[] {
+  if (!name || !name.trim()) return [];
+
+  const normalizedName = name.trim().toLowerCase();
+  const roles: string[] = [];
+
+  const getAnswer = (questionId: string): string | undefined => {
+    const answer = responses.find(r => r.questionId === questionId);
+    return typeof answer?.value === 'string' ? answer.value : undefined;
+  };
+
+  // CEO 확인
+  const ceoName = getAnswer('ceoName')?.trim();
+  if (ceoName && ceoName.toLowerCase() === normalizedName) {
+    roles.push('CEO');
+  }
+
+  // CFO 확인
+  const cfoName = getAnswer('cfoName')?.trim();
+  if (cfoName && cfoName.toLowerCase() === normalizedName) {
+    roles.push('CFO');
+  }
+
+  // Corporate Secretary 확인
+  const csName = getAnswer('csName')?.trim();
+  if (csName && csName.toLowerCase() === normalizedName) {
+    roles.push('Corporate Secretary');
+  }
+
+  // Chairman 확인
+  const chairmanName = getAnswer('chairmanName')?.trim();
+  if (chairmanName && chairmanName.toLowerCase() === normalizedName) {
+    roles.push('Chairman');
+  }
+
+  // Director 확인
+  const directorsResponse = responses.find(r => r.questionId === 'directors');
+  if (directorsResponse && Array.isArray(directorsResponse.value)) {
+    const directors = directorsResponse.value as Array<{ name?: string }>;
+    const isDirector = directors.some(d => d.name?.trim().toLowerCase() === normalizedName);
+    if (isDirector) {
+      roles.push('Director');
+    }
+  }
+
+  // Founder 확인
+  const foundersResponse = responses.find(r => r.questionId === 'founders');
+  if (foundersResponse && Array.isArray(foundersResponse.value)) {
+    const founders = foundersResponse.value as Array<{ name?: string }>;
+    const isFounder = founders.some(f => f.name?.trim().toLowerCase() === normalizedName);
+    if (isFounder) {
+      roles.push('Founder');
+    }
+  }
+
+  return roles;
+}
+
+/**
+ * 직책 배열을 공식 명칭 문자열로 변환
+ * @param roles - 직책 배열 (예: ['CEO', 'CFO'])
+ * @returns 공식 명칭 문자열 (예: 'Chief Executive Officer and Chief Financial Officer')
+ */
+export function formatRolesAsTitle(roles: string[]): string {
+  if (!roles || roles.length === 0) return '';
+
+  // 직책을 공식 명칭으로 변환
+  const fullNames = roles.map(role => ROLE_FULL_NAMES[role] || role);
+
+  // 중복 제거
+  const uniqueNames = [...new Set(fullNames)];
+
+  // "A and B" 또는 "A, B, and C" 형식으로 결합
+  return formatListAnd(uniqueNames);
+}
+
+/**
+ * 특정 이름의 직책을 공식 명칭 문자열로 반환
+ * @param name - 조회할 이름
+ * @param responses - 설문 응답 배열
+ * @returns 공식 명칭 문자열 (예: 'Chief Executive Officer and Chief Financial Officer')
+ */
+export function getTitleForName(
+  name: string,
+  responses: SurveyResponse[]
+): string {
+  const roles = getRolesForName(name, responses);
+  return formatRolesAsTitle(roles);
+}
+
+// ============================================
 // 문서번호 생성 유틸리티
 // ============================================
 
@@ -1329,7 +1445,28 @@ export function transformSurveyToVariables(
     }
   }
 
-  // 7. Fallback 계산: Founder1Share가 없으면 자동 계산 시도
+  // 7. BankConsent 이름에 대한 직책 자동 생성
+  // BankConsent (회사 계좌 개설자)의 직책 조회
+  const bankConsentResponse = responses.find(r => r.questionId === 'bankConsent');
+  if (bankConsentResponse?.value && typeof bankConsentResponse.value === 'string') {
+    const bankConsentName = bankConsentResponse.value.trim();
+    result['BankConsent'] = bankConsentName;
+    const bankConsentTitle = getTitleForName(bankConsentName, responses);
+    result['BankConsentTitle'] = bankConsentTitle;
+    console.log(`[transformSurveyToVariables] BankConsent: ${bankConsentName}, Title: ${bankConsentTitle}`);
+  }
+
+  // BankConsent2 (은행 권한 수여자)의 직책 조회
+  const bankConsent2Response = responses.find(r => r.questionId === 'bankConsent2');
+  if (bankConsent2Response?.value && typeof bankConsent2Response.value === 'string') {
+    const bankConsent2Name = bankConsent2Response.value.trim();
+    result['BankConsent2'] = bankConsent2Name;
+    const bankConsent2Title = getTitleForName(bankConsent2Name, responses);
+    result['BankConsent2Title'] = bankConsent2Title;
+    console.log(`[transformSurveyToVariables] BankConsent2: ${bankConsent2Name}, Title: ${bankConsent2Title}`);
+  }
+
+  // 8. Fallback 계산: Founder1Share가 없으면 자동 계산 시도
   if (!result['Founder1Share'] && result['Founder1Cash'] && result['FMV']) {
     console.log('[transformSurveyToVariables] Step 7: Fallback calculation for Founder1Share');
     const founder1CashNum = parseFloat((result['Founder1Cash'] || '0').replace(/[$,]/g, ''));
@@ -1851,4 +1988,9 @@ export default {
 
   // 문서번호
   generateDocumentNumber,
+
+  // 직책 조회
+  getRolesForName,
+  formatRolesAsTitle,
+  getTitleForName,
 };
