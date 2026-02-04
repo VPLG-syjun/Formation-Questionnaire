@@ -27,6 +27,7 @@ interface GenerateRequest {
   surveyId: string;
   selectedTemplates: string[];
   overrideVariables?: Record<string, string>;
+  repeatForSelections?: Record<string, number[]>;  // 템플릿ID별 선택된 인원 인덱스 (0-based)
 }
 
 interface DocumentResult {
@@ -57,13 +58,19 @@ async function getRedisClient() {
 /**
  * 문서 파일명 생성
  */
-function generateFilename(templateName: string, companyName: string): string {
+function generateFilename(templateName: string, companyName: string, personName?: string): string {
   const date = new Date();
   const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
 
   // 파일명에 사용할 수 없는 문자 제거
   const safeName = (companyName || 'Document').replace(/[<>:"/\\|?*]/g, '_').trim();
   const safeTemplateName = templateName.replace(/[<>:"/\\|?*]/g, '_').trim();
+
+  // 인원별 문서인 경우 이름 추가
+  if (personName) {
+    const safePersonName = personName.replace(/[<>:"/\\|?*]/g, '_').trim();
+    return `${safeTemplateName}_${safePersonName}_${dateStr}.docx`;
+  }
 
   return `${safeTemplateName}_${safeName}_${dateStr}.docx`;
 }
@@ -78,6 +85,72 @@ function generateZipFilename(companyName: string): string {
   const safeName = (companyName || 'Documents').replace(/[<>:"/\\|?*]/g, '_').trim();
 
   return `${safeName}_Legal_Documents_${dateStr}.zip`;
+}
+
+/**
+ * 설문에서 반복 대상 그룹 데이터 추출
+ */
+function getRepeatGroupData(
+  responses: SurveyResponse[],
+  repeatFor: 'founders' | 'directors'
+): Array<{ name: string; [key: string]: string }> {
+  const groupResponse = responses.find(r => r.questionId === repeatFor);
+  if (!groupResponse || !Array.isArray(groupResponse.value)) {
+    return [];
+  }
+
+  return groupResponse.value.map((item: Record<string, string>) => ({
+    name: item.name || item.founderName || item.directorName || 'Unknown',
+    ...item,
+  }));
+}
+
+/**
+ * 인원별 변수 생성 (개인 정보로 전역 변수 덮어쓰기)
+ */
+function createPersonVariables(
+  baseVariables: Record<string, string>,
+  person: { name: string; [key: string]: string },
+  personIndex: number,
+  repeatFor: 'founders' | 'directors'
+): Record<string, string> {
+  const personVars: Record<string, string> = { ...baseVariables };
+
+  // 개인 정보 변수 추가
+  if (repeatFor === 'founders') {
+    // 창업자별 변수
+    personVars['FounderName'] = person.name || '';
+    personVars['founderName'] = person.name || '';
+    personVars['FounderAddress'] = person.address || person.founderAddress || '';
+    personVars['founderAddress'] = person.address || person.founderAddress || '';
+    personVars['FounderEmail'] = person.email || person.founderEmail || '';
+    personVars['founderEmail'] = person.email || person.founderEmail || '';
+    personVars['FounderCash'] = person.cash || person.founderCash || '';
+    personVars['founderCash'] = person.cash || person.founderCash || '';
+
+    // 인덱스 변수도 추가 (1-based)
+    const idx = personIndex + 1;
+    personVars[`Founder${idx}Name`] = person.name || '';
+    personVars[`Founder${idx}Address`] = person.address || person.founderAddress || '';
+    personVars[`Founder${idx}Email`] = person.email || person.founderEmail || '';
+    personVars[`Founder${idx}Cash`] = person.cash || person.founderCash || '';
+  } else if (repeatFor === 'directors') {
+    // 이사별 변수
+    personVars['DirectorName'] = person.name || '';
+    personVars['directorName'] = person.name || '';
+    personVars['DirectorAddress'] = person.address || person.directorAddress || '';
+    personVars['directorAddress'] = person.address || person.directorAddress || '';
+    personVars['DirectorEmail'] = person.email || person.directorEmail || '';
+    personVars['directorEmail'] = person.email || person.directorEmail || '';
+
+    // 인덱스 변수도 추가 (1-based)
+    const idx = personIndex + 1;
+    personVars[`Director${idx}Name`] = person.name || '';
+    personVars[`Director${idx}Address`] = person.address || person.directorAddress || '';
+    personVars[`Director${idx}Email`] = person.email || person.directorEmail || '';
+  }
+
+  return personVars;
 }
 
 /**
@@ -155,7 +228,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     client = await getRedisClient();
 
-    const { surveyId, selectedTemplates, overrideVariables = {} } = req.body as GenerateRequest;
+    const { surveyId, selectedTemplates, overrideVariables = {}, repeatForSelections = {} } = req.body as GenerateRequest;
 
     // 1. 입력 검증
     if (!surveyId) {
@@ -336,24 +409,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // 3g. docxtemplater로 문서 생성
-        const generatedBuffer = generateDocument(templateBuffer, variables);
+        // 3g. repeatFor 처리 - 인원별 문서 생성
+        const repeatFor = template.repeatFor as 'founders' | 'directors' | '' | undefined;
+        const selectedPersonIndices = repeatForSelections[templateId];
 
-        // 3h. 파일명 생성 및 저장
-        const filename = generateFilename(
-          template.displayName || template.name,
-          companyName
-        );
+        if (repeatFor && selectedPersonIndices && selectedPersonIndices.length > 0) {
+          // 인원별 문서 생성
+          const persons = getRepeatGroupData(responses, repeatFor);
+          console.log(`[DEBUG] Template ${templateId} - repeatFor: ${repeatFor}, selected: ${selectedPersonIndices.join(',')}, persons: ${persons.length}`);
 
-        generatedFiles.push({ filename, buffer: generatedBuffer });
+          for (const personIndex of selectedPersonIndices) {
+            const person = persons[personIndex];
+            if (!person) {
+              console.warn(`[WARN] Person at index ${personIndex} not found for template ${templateId}`);
+              continue;
+            }
 
-        documentResults.push({
-          templateId,
-          templateName: template.displayName || template.name,
-          filename,
-          status: 'success',
-          missingVariables: validation.isValid ? undefined : [...validation.missingVariables, ...validation.emptyRequired],
-        });
+            // 개인별 변수 생성
+            const personVariables = createPersonVariables(variables, person, personIndex, repeatFor);
+
+            try {
+              // docxtemplater로 문서 생성
+              const generatedBuffer = generateDocument(templateBuffer, personVariables);
+
+              // 파일명 생성 (인원 이름 포함)
+              const filename = generateFilename(
+                template.displayName || template.name,
+                companyName,
+                person.name
+              );
+
+              generatedFiles.push({ filename, buffer: generatedBuffer });
+
+              documentResults.push({
+                templateId: `${templateId}_${personIndex}`,
+                templateName: `${template.displayName || template.name} - ${person.name}`,
+                filename,
+                status: 'success',
+                missingVariables: validation.isValid ? undefined : [...validation.missingVariables, ...validation.emptyRequired],
+              });
+            } catch (personDocError: any) {
+              console.error(`Error generating document for ${person.name}:`, personDocError);
+              documentResults.push({
+                templateId: `${templateId}_${personIndex}`,
+                templateName: `${template.displayName || template.name} - ${person.name}`,
+                filename: '',
+                status: 'error',
+                error: personDocError.message || 'Document generation failed',
+              });
+            }
+          }
+        } else {
+          // 일반 문서 생성 (기존 로직)
+          const generatedBuffer = generateDocument(templateBuffer, variables);
+
+          // 파일명 생성 및 저장
+          const filename = generateFilename(
+            template.displayName || template.name,
+            companyName
+          );
+
+          generatedFiles.push({ filename, buffer: generatedBuffer });
+
+          documentResults.push({
+            templateId,
+            templateName: template.displayName || template.name,
+            filename,
+            status: 'success',
+            missingVariables: validation.isValid ? undefined : [...validation.missingVariables, ...validation.emptyRequired],
+          });
+        }
 
       } catch (docError: any) {
         console.error(`Error generating document for template ${templateId}:`, docError);

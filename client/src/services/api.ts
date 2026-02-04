@@ -85,6 +85,7 @@ export interface Template {
   displayName: string;
   category: string;
   isActive: boolean;
+  repeatFor?: 'founders' | 'directors' | '';  // 인원별 반복 생성 대상
 }
 
 export interface TemplateSelection {
@@ -129,7 +130,8 @@ export async function selectTemplates(surveyId: string): Promise<TemplateSelecti
 export async function generateDocuments(
   surveyId: string,
   selectedTemplates: string[],
-  overrideVariables?: Record<string, string>
+  overrideVariables?: Record<string, string>,
+  repeatForSelections?: Record<string, number[]>  // 템플릿ID별 선택된 인원 인덱스 (0-based)
 ): Promise<GenerateDocumentsResponse> {
   const response = await fetch(`${API_BASE}/admin/generate-documents`, {
     method: 'POST',
@@ -138,6 +140,7 @@ export async function generateDocuments(
       surveyId,
       selectedTemplates,
       overrideVariables,
+      repeatForSelections,
     }),
   });
 

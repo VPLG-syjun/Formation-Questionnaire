@@ -136,6 +136,7 @@ export default function TemplateEdit() {
     name: '',
     displayName: '',
     category: '법인설립',
+    repeatFor: '' as '' | 'founders' | 'directors',  // 인원별 반복 생성 대상
   });
 
   // 변수 매핑
@@ -175,6 +176,7 @@ export default function TemplateEdit() {
         name: templateData.name,
         displayName: templateData.displayName,
         category: templateData.category,
+        repeatFor: templateData.repeatFor || '',
       });
 
       // 변수 매핑 조회
@@ -536,7 +538,32 @@ export default function TemplateEdit() {
               ))}
             </select>
           </div>
+          <div className="form-group" style={{ flex: 0.7 }}>
+            <label>인원별 반복 생성</label>
+            <select
+              value={formData.repeatFor}
+              onChange={(e) => setFormData({ ...formData, repeatFor: e.target.value as '' | 'founders' | 'directors' })}
+            >
+              <option value="">사용 안함</option>
+              <option value="founders">주주(Founders)별 생성</option>
+              <option value="directors">이사(Directors)별 생성</option>
+            </select>
+          </div>
         </div>
+
+        {formData.repeatFor && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px',
+            background: 'var(--color-info-light, #e7f3ff)',
+            border: '1px solid var(--color-info, #0066cc)',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            color: 'var(--color-info-dark, #004499)',
+          }}>
+            <strong>인원별 반복 생성 활성화됨:</strong> 문서 생성 시 {formData.repeatFor === 'founders' ? '주주' : '이사'} 목록에서 선택한 인원 각각에 대해 개별 문서가 생성됩니다.
+          </div>
+        )}
 
         <div style={{ marginTop: '12px', fontSize: '0.9rem', color: 'var(--color-gray-500)' }}>
           파일: {template.filename} | 업로드일: {new Date(template.uploadedAt).toLocaleDateString('ko-KR')}

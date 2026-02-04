@@ -53,6 +53,9 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  // 인원별 반복 생성 선택 상태: 템플릿ID → 선택된 인원 인덱스 배열 (0-based)
+  const [repeatForSelections, setRepeatForSelections] = useState<Record<string, number[]>>({});
+
   // Load templates when modal opens
   useEffect(() => {
     if (isOpen && surveyId) {
@@ -77,6 +80,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
       setZipFilename('');
       setPreviewTemplate(null);
       setShowPreview(false);
+      setRepeatForSelections({});
     }
   }, [isOpen]);
 
@@ -97,10 +101,62 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
       // Also pre-select suggested templates
       selection.suggested.forEach(t => requiredIds.add(t.id));
       setSelectedIds(requiredIds);
+
+      // repeatFor가 설정된 템플릿에 대해 기본 인원 선택 초기화
+      const allTemplates = [...selection.required, ...selection.suggested, ...selection.optional];
+      const initialRepeatSelections: Record<string, number[]> = {};
+
+      allTemplates.forEach(template => {
+        if (template.repeatFor) {
+          const groupData = getRepeatGroupData(surveyData, template.repeatFor);
+          // 기본적으로 모든 인원 선택
+          initialRepeatSelections[template.id] = groupData.map((_, idx) => idx);
+        }
+      });
+
+      setRepeatForSelections(initialRepeatSelections);
     } catch (err) {
       setError(err instanceof Error ? err.message : '템플릿을 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 설문 데이터에서 반복 그룹 데이터 추출
+  const getRepeatGroupData = (surveyData: Survey, repeatFor: string): Array<{ name: string; [key: string]: string }> => {
+    const answer = surveyData.answers?.find(a => a.questionId === repeatFor);
+    if (answer && Array.isArray(answer.value)) {
+      return answer.value as Array<{ name: string; [key: string]: string }>;
+    }
+    return [];
+  };
+
+  // 인원 선택 토글
+  const handleTogglePersonSelection = (templateId: string, personIndex: number) => {
+    setRepeatForSelections(prev => {
+      const current = prev[templateId] || [];
+      if (current.includes(personIndex)) {
+        return { ...prev, [templateId]: current.filter(i => i !== personIndex) };
+      } else {
+        return { ...prev, [templateId]: [...current, personIndex].sort((a, b) => a - b) };
+      }
+    });
+  };
+
+  // 전체 인원 선택/해제
+  const handleSelectAllPersons = (templateId: string, repeatFor: string, selectAll: boolean) => {
+    if (!survey) return;
+    const groupData = getRepeatGroupData(survey, repeatFor);
+    if (selectAll) {
+      setRepeatForSelections(prev => ({
+        ...prev,
+        [templateId]: groupData.map((_, idx) => idx),
+      }));
+    } else {
+      setRepeatForSelections(prev => ({
+        ...prev,
+        [templateId]: [],
+      }));
     }
   };
 
@@ -252,7 +308,20 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
     }, 500);
 
     try {
-      const response = await generateDocuments(surveyId, templateIds, overrides);
+      // repeatFor 선택이 있는 템플릿만 필터링해서 전달
+      const filteredRepeatSelections: Record<string, number[]> = {};
+      Object.entries(repeatForSelections).forEach(([templateId, indices]) => {
+        if (selectedIds.has(templateId) && indices.length > 0) {
+          filteredRepeatSelections[templateId] = indices;
+        }
+      });
+
+      const response = await generateDocuments(
+        surveyId,
+        templateIds,
+        overrides,
+        Object.keys(filteredRepeatSelections).length > 0 ? filteredRepeatSelections : undefined
+      );
 
       clearInterval(progressInterval);
       setCompletedTemplates(templateIds);
@@ -435,6 +504,107 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                   </div>
                 </div>
               )}
+
+              {/* 인원별 반복 생성 선택 섹션 */}
+              {(() => {
+                const allTemplates = [
+                  ...templateSelection.required,
+                  ...templateSelection.suggested,
+                  ...templateSelection.optional,
+                ];
+                const repeatTemplates = allTemplates.filter(
+                  t => t.repeatFor && selectedIds.has(t.id)
+                );
+
+                if (repeatTemplates.length === 0 || !survey) return null;
+
+                return (
+                  <div className="template-section" style={{ marginTop: '20px' }}>
+                    <h3 className="template-section-title">
+                      <span className="badge" style={{ background: '#9333ea', color: 'white' }}>인원 선택</span>
+                      인원별 문서 생성
+                    </h3>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--color-gray-600)', marginBottom: '16px' }}>
+                      아래 템플릿은 선택한 인원별로 개별 문서가 생성됩니다.
+                    </p>
+
+                    {repeatTemplates.map(template => {
+                      const groupData = getRepeatGroupData(survey, template.repeatFor!);
+                      const selectedPersons = repeatForSelections[template.id] || [];
+
+                      return (
+                        <div key={template.id} style={{
+                          background: 'var(--color-gray-50)',
+                          border: '1px solid var(--color-gray-200)',
+                          borderRadius: '8px',
+                          padding: '16px',
+                          marginBottom: '12px',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <strong>{template.displayName || template.name}</strong>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline"
+                                onClick={() => handleSelectAllPersons(template.id, template.repeatFor!, true)}
+                              >
+                                전체 선택
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline"
+                                onClick={() => handleSelectAllPersons(template.id, template.repeatFor!, false)}
+                              >
+                                전체 해제
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {groupData.map((person, idx) => (
+                              <label
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '8px 12px',
+                                  background: selectedPersons.includes(idx) ? 'var(--color-primary-light)' : 'white',
+                                  border: `1px solid ${selectedPersons.includes(idx) ? 'var(--color-primary)' : 'var(--color-gray-300)'}`,
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPersons.includes(idx)}
+                                  onChange={() => handleTogglePersonSelection(template.id, idx)}
+                                  style={{ width: '16px', height: '16px' }}
+                                />
+                                <span style={{ fontWeight: 500 }}>{person.name || `${template.repeatFor === 'founders' ? '주주' : '이사'} ${idx + 1}`}</span>
+                                {person.cash && (
+                                  <span style={{ color: 'var(--color-gray-500)', fontSize: '0.85rem' }}>
+                                    (${Number(person.cash).toLocaleString()})
+                                  </span>
+                                )}
+                                {person.email && (
+                                  <span style={{ color: 'var(--color-gray-500)', fontSize: '0.85rem' }}>
+                                    {person.email}
+                                  </span>
+                                )}
+                              </label>
+                            ))}
+                          </div>
+
+                          <div style={{ marginTop: '8px', fontSize: '0.85rem', color: 'var(--color-gray-500)' }}>
+                            {selectedPersons.length}명 선택됨 → {selectedPersons.length}개 문서 생성 예정
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {/* Bulk Actions */}
               <div className="bulk-actions">
