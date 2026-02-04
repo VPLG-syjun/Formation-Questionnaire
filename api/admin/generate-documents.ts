@@ -10,6 +10,7 @@ import {
   validateVariables,
   SurveyResponse,
   VariableMapping,
+  formatNumberWithComma,
 } from '../../lib/document-generator.js';
 
 // Redis Keys
@@ -247,22 +248,32 @@ function createPersonVariables(
   personVars['personRoles'] = person.roles.join(' / ');
 
   // 출자금 (항상 설정 - 빈 문자열 허용)
-  personVars['PersonCash'] = person.cash || '';
-  personVars['personCash'] = person.cash || '';
+  // $ + comma 형식 적용 (예: $10,000)
+  const rawCash = person.cash || '';
+  const cashNum = parseFloat(rawCash.replace(/[$,]/g, '') || '0');
+  if (cashNum > 0) {
+    const formattedCash = '$' + formatNumberWithComma(cashNum);
+    personVars['PersonCash'] = formattedCash;
+    personVars['personCash'] = formattedCash;
+  } else {
+    personVars['PersonCash'] = '';
+    personVars['personCash'] = '';
+  }
 
   // PersonShare 계산: PersonCash / FMV
-  // FMV는 baseVariables에서 가져옴 (fairMarketValue 또는 FMV)
-  const fmv = parseFloat(baseVariables['fairMarketValue'] || baseVariables['FMV'] || '0');
-  const cash = parseFloat(person.cash || '0');
-  if (fmv > 0 && cash > 0) {
-    const share = Math.floor(cash / fmv);  // 정수 주식 수
-    personVars['PersonShare'] = share.toString();
-    personVars['personShare'] = share.toString();
-    console.log(`[DEBUG] PersonShare calculated: ${cash} / ${fmv} = ${share}`);
+  // FMV는 baseVariables에서 가져옴 (fairMarketValue 또는 FMV - $ 제거 필요)
+  const fmvStr = baseVariables['fairMarketValue'] || baseVariables['FMV'] || '0';
+  const fmv = parseFloat(fmvStr.replace(/[$,]/g, ''));
+  if (fmv > 0 && cashNum > 0) {
+    const share = Math.floor(cashNum / fmv);  // 정수 주식 수
+    const formattedShare = formatNumberWithComma(share);  // comma 형식 적용
+    personVars['PersonShare'] = formattedShare;
+    personVars['personShare'] = formattedShare;
+    console.log(`[DEBUG] PersonShare calculated: ${cashNum} / ${fmv} = ${share} -> ${formattedShare}`);
   } else {
     personVars['PersonShare'] = '';
     personVars['personShare'] = '';
-    console.log(`[DEBUG] PersonShare not calculable: cash=${cash}, fmv=${fmv}`);
+    console.log(`[DEBUG] PersonShare not calculable: cash=${cashNum}, fmv=${fmv}`);
   }
 
   // 기존 호환성을 위한 Founder/Director 변수도 설정
@@ -273,8 +284,9 @@ function createPersonVariables(
     personVars['founderAddress'] = person.address || '';
     personVars['FounderEmail'] = person.email || '';
     personVars['founderEmail'] = person.email || '';
-    personVars['FounderCash'] = person.cash || '';
-    personVars['founderCash'] = person.cash || '';
+    // FounderCash도 PersonCash와 동일하게 $ + comma 형식
+    personVars['FounderCash'] = personVars['PersonCash'];
+    personVars['founderCash'] = personVars['personCash'];
     // FounderShare도 동일하게 설정
     personVars['FounderShare'] = personVars['PersonShare'];
     personVars['founderShare'] = personVars['personShare'];
