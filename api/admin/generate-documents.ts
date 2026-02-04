@@ -11,6 +11,7 @@ import {
   SurveyResponse,
   VariableMapping,
   formatNumberWithComma,
+  toTitleCase,
 } from '../../lib/document-generator.js';
 
 // Redis Keys
@@ -97,6 +98,7 @@ interface PersonWithRoles {
   address?: string;
   email?: string;
   cash?: string;
+  type?: 'individual' | 'corporation';  // Founder의 경우 개인/법인 구분
 }
 
 function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
@@ -132,15 +134,19 @@ function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
   // 2. Founders (창업자/주주)
   const foundersResponse = responses.find(r => r.questionId === 'founders');
   if (foundersResponse && Array.isArray(foundersResponse.value)) {
-    for (const founder of foundersResponse.value as Array<{ name?: string; address?: string; email?: string; cash?: string }>) {
+    for (const founder of foundersResponse.value as Array<{ name?: string; address?: string; email?: string; cash?: string; type?: string }>) {
       const name = founder.name?.trim();
       if (!name) continue;
+
+      const founderType = (founder.type?.toLowerCase() === 'corporation' ? 'corporation' : 'individual') as 'individual' | 'corporation';
 
       if (personMap.has(name)) {
         personMap.get(name)!.roles.push('Founder');
         if (!personMap.get(name)!.address && founder.address) personMap.get(name)!.address = founder.address;
         if (!personMap.get(name)!.email && founder.email) personMap.get(name)!.email = founder.email;
         if (founder.cash) personMap.get(name)!.cash = founder.cash;
+        // 법인 타입인 경우에만 type 설정 (개인은 기본값)
+        if (founderType === 'corporation') personMap.get(name)!.type = 'corporation';
       } else {
         personMap.set(name, {
           name,
@@ -148,6 +154,7 @@ function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
           address: founder.address,
           email: founder.email,
           cash: founder.cash,
+          type: founderType,
         });
       }
     }
@@ -232,14 +239,19 @@ function createPersonVariables(
   // 디버깅: 인원 정보 로깅
   console.log(`[DEBUG] createPersonVariables for: ${person.name}`, {
     roles: person.roles,
+    type: person.type || 'individual',
     address: person.address || '(none)',
     email: person.email || '(none)',
     cash: person.cash || '(none)',
   });
 
+  // 이름에 Title Case 적용 (법인은 제외)
+  const isCorporation = person.type === 'corporation';
+  const formattedName = isCorporation ? (person.name || '') : toTitleCase(person.name || '');
+
   // 공통 인원 변수 (항상 설정, 빈 문자열 포함)
-  personVars['PersonName'] = person.name || '';
-  personVars['personName'] = person.name || '';
+  personVars['PersonName'] = formattedName;
+  personVars['personName'] = formattedName;
   personVars['PersonAddress'] = person.address || '';
   personVars['personAddress'] = person.address || '';
   personVars['PersonEmail'] = person.email || '';
@@ -278,8 +290,8 @@ function createPersonVariables(
 
   // 기존 호환성을 위한 Founder/Director 변수도 설정
   if (person.roles.includes('Founder')) {
-    personVars['FounderName'] = person.name || '';
-    personVars['founderName'] = person.name || '';
+    personVars['FounderName'] = formattedName;  // Title Case 적용된 이름 사용
+    personVars['founderName'] = formattedName;
     personVars['FounderAddress'] = person.address || '';
     personVars['founderAddress'] = person.address || '';
     personVars['FounderEmail'] = person.email || '';
@@ -293,8 +305,8 @@ function createPersonVariables(
   }
 
   if (person.roles.includes('Director')) {
-    personVars['DirectorName'] = person.name || '';
-    personVars['directorName'] = person.name || '';
+    personVars['DirectorName'] = formattedName;  // Title Case 적용된 이름 사용
+    personVars['directorName'] = formattedName;
     personVars['DirectorAddress'] = person.address || '';
     personVars['directorAddress'] = person.address || '';
     personVars['DirectorEmail'] = person.email || '';

@@ -487,6 +487,20 @@ export function formatPhone(phone: string | undefined, format: string = 'dashed'
 // ============================================
 
 /**
+ * Title Case 변환 (이름에 사용)
+ * @example toTitleCase('john doe') → 'John Doe'
+ * @example toTitleCase('JOHN DOE') → 'John Doe'
+ */
+export function toTitleCase(text: string | undefined): string {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * 텍스트 변환 규칙 적용
  */
 export function transformText(text: string | undefined, rule: string): string {
@@ -503,7 +517,7 @@ export function transformText(text: string | undefined, rule: string): string {
       return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 
     case 'title':
-      return text.replace(/\b\w/g, c => c.toUpperCase());
+      return toTitleCase(text);
 
     case 'trim':
       return text.trim();
@@ -1050,16 +1064,36 @@ export function transformSurveyToVariables(
       // 각 필드별 배열 생성 (예: directorsName, directorsEmail 등)
       // 숫자 필드 (콤마 포맷팅 적용)
       const numericFields = ['cash'];
+      // 이름 필드 (Title Case 적용) - Director, Officer, Founder(Individual) 이름
+      const nameFields = ['name', 'ceoname'];
       const fieldNames = Object.keys(groupItems[0] || {});
       for (const fieldName of fieldNames) {
         const isNumericField = numericFields.includes(fieldName.toLowerCase());
-        const fieldValues = groupItems.map(item => {
+        const isNameField = nameFields.includes(fieldName.toLowerCase());
+        const fieldValues = groupItems.map((item, itemIndex) => {
           const val = item[fieldName] || '';
           // 숫자 필드인 경우 콤마 포맷팅 적용
           if (isNumericField && val) {
             const numVal = parseFloat(val.replace(/,/g, ''));
             if (!isNaN(numVal)) {
               return formatNumberWithComma(numVal);
+            }
+          }
+          // 이름 필드인 경우 Title Case 적용
+          // 단, Founder의 경우 Individual 타입일 때만 적용 (법인명은 제외)
+          if (isNameField && val) {
+            // ceoName은 항상 Title Case (법인 대표이사 이름)
+            if (fieldName.toLowerCase() === 'ceoname') {
+              return toTitleCase(val);
+            }
+            // name 필드: Founder의 경우 type이 individual일 때만 Title Case
+            if (fieldName.toLowerCase() === 'name') {
+              const itemType = item['type']?.toLowerCase();
+              // founders 그룹이고 법인(corporation)인 경우 Title Case 적용 안함
+              if (baseName === 'founders' && itemType === 'corporation') {
+                return val; // 법인명은 그대로
+              }
+              return toTitleCase(val); // 개인 이름은 Title Case
             }
           }
           return val;
@@ -1091,13 +1125,29 @@ export function transformSurveyToVariables(
       // 반복문용 배열 데이터 (docxtemplater loop 용)
       // 문자열이 아닌 배열은 별도로 저장 (나중에 docxtemplater에 전달)
       (result as Record<string, unknown>)[baseName] = groupItems.map((item, index) => {
-        // 숫자 필드에 콤마 포맷팅 적용
+        // 숫자 필드에 콤마 포맷팅, 이름 필드에 Title Case 적용
         const formattedItem: Record<string, string | number | boolean> = {};
+        const itemType = item['type']?.toLowerCase();
+
         for (const [key, val] of Object.entries(item)) {
           if (numericFields.includes(key.toLowerCase()) && val) {
             const numVal = parseFloat(val.replace(/,/g, ''));
             if (!isNaN(numVal)) {
               formattedItem[key] = formatNumberWithComma(numVal);
+            } else {
+              formattedItem[key] = val;
+            }
+          } else if (nameFields.includes(key.toLowerCase()) && val) {
+            // ceoName은 항상 Title Case
+            if (key.toLowerCase() === 'ceoname') {
+              formattedItem[key] = toTitleCase(val);
+            } else if (key.toLowerCase() === 'name') {
+              // founders 법인은 Title Case 적용 안함
+              if (baseName === 'founders' && itemType === 'corporation') {
+                formattedItem[key] = val;
+              } else {
+                formattedItem[key] = toTitleCase(val);
+              }
             } else {
               formattedItem[key] = val;
             }
@@ -1159,7 +1209,21 @@ export function transformSurveyToVariables(
     result['FMV'] = '$' + fmvVal;
   }
 
-  // 5. 매핑된 변수 처리 (계산 변수 제외)
+  // 5b. Officer 이름에 Title Case 적용 (CEO, CFO, CS, Chairman)
+  const officerNameFields = ['ceoName', 'cfoName', 'csName', 'chairmanName'];
+  for (const fieldId of officerNameFields) {
+    const response = responses.find(r => r.questionId === fieldId);
+    if (response?.value && typeof response.value === 'string') {
+      const titleCaseName = toTitleCase(response.value.trim());
+      // 다양한 변수명 버전 지원
+      result[fieldId] = titleCaseName;
+      // 대문자 시작 버전 (CEOName, CFOName 등)
+      const capitalizedKey = fieldId.charAt(0).toUpperCase() + fieldId.slice(1);
+      result[capitalizedKey] = titleCaseName;
+    }
+  }
+
+  // 6. 매핑된 변수 처리 (계산 변수 제외)
   for (const mapping of variableMappings) {
     const variableKey = mapping.variableName;
 
@@ -1472,7 +1536,7 @@ export function transformSurveyToVariables(
   // BankConsent (회사 계좌 개설자)의 직책 조회
   const bankConsentResponse = responses.find(r => r.questionId === 'bankConsent');
   if (bankConsentResponse?.value && typeof bankConsentResponse.value === 'string') {
-    const bankConsentName = bankConsentResponse.value.trim();
+    const bankConsentName = toTitleCase(bankConsentResponse.value.trim());  // Title Case 적용
     const bankConsentTitle = getTitleForName(bankConsentName, responses);
     // 다양한 변수명 버전 지원
     result['BankConsent'] = bankConsentName;
@@ -1489,7 +1553,7 @@ export function transformSurveyToVariables(
   // BankConsent2 (은행 권한 수여자)의 직책 조회
   const bankConsent2Response = responses.find(r => r.questionId === 'bankConsent2');
   if (bankConsent2Response?.value && typeof bankConsent2Response.value === 'string') {
-    const bankConsent2Name = bankConsent2Response.value.trim();
+    const bankConsent2Name = toTitleCase(bankConsent2Response.value.trim());  // Title Case 적용
     const bankConsent2Title = getTitleForName(bankConsent2Name, responses);
     // 다양한 변수명 버전 지원
     result['BankConsent2'] = bankConsent2Name;
