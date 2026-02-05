@@ -1171,7 +1171,7 @@ export function transformSurveyToVariables(
     // 단순 문자열 값
     if (typeof value === 'string') {
       // 회사/법인 이름 필드는 Capitalize 적용
-      const companyNameFields = ['companyname', 'corporationname', 'businessname', 'entityname'];
+      const companyNameFields = ['companyname', 'companyname1', 'companyname2', 'companyname3', 'corporationname', 'businessname', 'entityname'];
       // 사람 이름 필드는 Title Case 적용
       const personNameFields = ['ceoname', 'cfoname', 'csname', 'agentname', 'registeredagentname', 'incorporatorname'];
 

@@ -27,8 +27,9 @@ const LOOP_CONTEXT_FIELDS = [
 const NAME_BASED_AUTO_VARIABLES = [
   // 회사 기본 정보 (설문 응답)
   'companyName', 'CompanyName', 'COMPANYNAME',
-  'companyName2', 'CompanyName2',
-  'companyName3', 'CompanyName3',
+  'companyName1', 'CompanyName1', 'COMPANYNAME1',
+  'companyName2', 'CompanyName2', 'COMPANYNAME2',
+  'companyName3', 'CompanyName3', 'COMPANYNAME3',
   'info', 'Info',
   'designator', 'Designator', 'DESIGNATOR',
 
