@@ -1250,11 +1250,20 @@ export function transformSurveyToVariables(
             formattedItem[key] = val;
           }
         }
+        // founders 그룹인 경우 isCorporation, isIndividual boolean 필드 추가
+        const isCorporation = baseName === 'founders' && itemType === 'corporation';
+        const isIndividual = baseName === 'founders' && itemType !== 'corporation';
+
         return {
           ...formattedItem,
           index: index + 1,
           isFirst: index === 0,
           isLast: index === groupItems.length - 1,
+          // founders 전용 boolean 필드 (조건부 서명란 등에 사용)
+          ...(baseName === 'founders' ? {
+            isCorporation,
+            isIndividual,
+          } : {}),
         };
       });
     }
@@ -1782,7 +1791,24 @@ export function transformSurveyToVariables(
     console.log(`[transformSurveyToVariables] Designator: ${capitalizedDesignator}`);
   }
 
-  // 12. 대소문자 구분 없는 변수 처리 - 모든 변수에 대해 다양한 케이스 버전 생성
+  // 12. StockOption 조건부 변수 처리
+  const stockOptionResponse = responses.find(r =>
+    r.questionId === 'stockOption' || r.questionId === 'StockOption'
+  );
+  if (stockOptionResponse?.value) {
+    const stockOptionValue = typeof stockOptionResponse.value === 'string'
+      ? stockOptionResponse.value.toLowerCase()
+      : '';
+    // "yes", "true", "1" 등을 true로 처리
+    const hasStockOption = ['yes', 'true', '1', 'y'].includes(stockOptionValue);
+    result['hasStockOption'] = hasStockOption ? 'true' : '';
+    result['HasStockOption'] = result['hasStockOption'];
+    result['stockOption'] = stockOptionValue;
+    result['StockOption'] = stockOptionValue;
+    console.log(`[transformSurveyToVariables] StockOption: ${stockOptionValue}, hasStockOption: ${hasStockOption}`);
+  }
+
+  // 13. 대소문자 구분 없는 변수 처리 - 모든 변수에 대해 다양한 케이스 버전 생성
   const caseInsensitiveResult = createCaseVariations(result);
 
   return caseInsensitiveResult;

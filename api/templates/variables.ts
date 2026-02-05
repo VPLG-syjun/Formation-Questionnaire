@@ -15,7 +15,9 @@ const REPEATABLE_GROUP_FIELDS = ['name', 'address', 'email', 'type', 'ceoName', 
 // 주의: ceoName은 독립 변수로도 사용되므로 여기서 제외
 const LOOP_CONTEXT_FIELDS = [
   // 반복 그룹 필드 (루프 안에서만 의미 있는 것들)
-  'name', 'address', 'email', 'type', 'cash', 'share',
+  'name', 'address', 'email', 'type', 'cash', 'share', 'ceoName',
+  // founders 전용 boolean 필드 (조건부 서명란 등에 사용)
+  'isCorporation', 'isIndividual',
   // docxtemplater 루프 헬퍼
   'index', 'isFirst', 'isLast',
 ];
@@ -69,6 +71,7 @@ const NAME_BASED_AUTO_VARIABLES = [
   'PersonRoles', 'personRoles',
   'PersonCash', 'personCash',
   'PersonShare', 'personShare',  // PersonCash / FMV 자동 계산
+  'PersonCeoName', 'personCeoName', 'PersonCEOName',  // 법인 Founder의 CEO 이름
 
   // 기존 호환성 변수 (인원별 생성 시 자동 매핑)
   'FounderName', 'founderName',
@@ -93,6 +96,10 @@ const NAME_BASED_AUTO_VARIABLES = [
   // Stock Ledger 합계 변수
   'cashSum', 'CashSum', 'CASHSUM',  // 모든 Founder Cash 합계 ($1,000 형식)
   'shareSum', 'ShareSum', 'SHARESUM',  // 모든 Founder Share 합계 (1,000 형식)
+
+  // 조건부 변수 (yes/no 질문에서 자동 생성)
+  'hasStockOption', 'HasStockOption',  // stockOption == "yes"인 경우 true
+  'stockOption', 'StockOption',
 ];
 
 // 대소문자 무시를 위한 소문자 목록

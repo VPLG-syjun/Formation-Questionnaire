@@ -619,6 +619,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'cash', 'Cash', 'CASH',
           'share', 'Share', 'SHARE',
           'ceoName', 'CeoName', 'ceoname',
+          'isCorporation', 'isIndividual',  // founders 전용 boolean 필드
           'index', 'isFirst', 'isLast',
         ];
 
