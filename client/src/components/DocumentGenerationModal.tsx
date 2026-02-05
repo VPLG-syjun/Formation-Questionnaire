@@ -351,7 +351,6 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
         '__fairMarketValue': survey?.adminValues?.fairMarketValue,
         '__COIDate': survey?.adminDates?.COIDate,
         '__SIGNDate': survey?.adminDates?.SIGNDate,
-        '__cashin': survey?.adminDates?.cashin,
       };
 
       // Filter out admin variables that already have values set

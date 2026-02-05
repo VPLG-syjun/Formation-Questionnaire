@@ -456,8 +456,9 @@ export const questionSections: QuestionSection[] = [
       },
       {
         id: 'cashin',
-        type: 'text',
+        type: 'date',
         text: '창업자들이 회사 계좌로 창립 자금을 입금할 대략적인 일자를 기재해주세요.',
+        description: '이 날짜를 기준으로 SHSIGNDate(주주총회 서명일)가 자동 계산됩니다.',
         required: true,
         documentField: 'Cashin',
       },

@@ -1064,8 +1064,8 @@ export function transformSurveyToVariables(
     result['SIGNYear'] = getCurrentDate('YYYY');
   }
 
-  // 3b. Cashin 날짜 및 SHSIGNDate (cashin 날짜가 속한 달의 마지막 영업일) 처리
-  const cashinResponse = responses.find(r => r.questionId === '__cashin');
+  // 3b. Cashin 날짜 및 SHSIGNDate (설문 응답에서 가져옴)
+  const cashinResponse = responses.find(r => r.questionId === 'cashin');
   if (cashinResponse?.value) {
     const rawValue = cashinResponse.value;
     const cashinValue: string = typeof rawValue === 'string'

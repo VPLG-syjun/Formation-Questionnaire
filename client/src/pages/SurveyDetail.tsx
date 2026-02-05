@@ -30,7 +30,6 @@ export default function SurveyDetail() {
   // 관리자 날짜 상태
   const [coiDate, setCoiDate] = useState('');
   const [signDate, setSignDate] = useState('');
-  const [cashinDate, setCashinDate] = useState('');
 
   // 관리자 값 상태
   const [authorizedShares, setAuthorizedShares] = useState('');
@@ -53,7 +52,6 @@ export default function SurveyDetail() {
     if (survey) {
       setCoiDate(survey.adminDates?.COIDate || '');
       setSignDate(survey.adminDates?.SIGNDate || '');
-      setCashinDate(survey.adminDates?.cashin || '');
       setAuthorizedShares(survey.adminValues?.authorizedShares || '');
       setParValue(survey.adminValues?.parValue || '');
       setFairMarketValue(survey.adminValues?.fairMarketValue || '');
@@ -192,7 +190,6 @@ export default function SurveyDetail() {
         adminDates: {
           COIDate: coiDate || undefined,
           SIGNDate: signDate || undefined,
-          cashin: cashinDate || undefined,
         },
       });
 
@@ -202,7 +199,6 @@ export default function SurveyDetail() {
         // 로컬 상태도 명시적으로 업데이트
         setCoiDate(result.survey.adminDates?.COIDate || '');
         setSignDate(result.survey.adminDates?.SIGNDate || '');
-        setCashinDate(result.survey.adminDates?.cashin || '');
       }
 
       setMessage({ type: 'success', text: '날짜가 저장되었습니다.' });
@@ -816,41 +812,6 @@ export default function SurveyDetail() {
               )}
             </div>
 
-            <div className="admin-date-field">
-              <label>Cashin (출자일) → SHSIGNDate 자동 계산</label>
-              <input
-                type="date"
-                value={cashinDate}
-                onChange={(e) => setCashinDate(e.target.value)}
-                className="date-input"
-              />
-              {cashinDate && (
-                <span className="date-preview">
-                  {new Date(cashinDate).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                  {' → SHSIGNDate: '}
-                  {(() => {
-                    const date = new Date(cashinDate);
-                    const dayOfMonth = date.getDate();
-                    // 15일 이전이면 같은 달, 15일 이후면 다음 달
-                    const targetMonth = dayOfMonth < 15 ? date.getMonth() : date.getMonth() + 1;
-                    const lastDay = new Date(date.getFullYear(), targetMonth + 1, 0);
-                    // 마지막 영업일 계산 (토/일 제외)
-                    while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
-                      lastDay.setDate(lastDay.getDate() - 1);
-                    }
-                    return lastDay.toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    });
-                  })()}
-                </span>
-              )}
-            </div>
           </div>
 
           <div style={{ marginTop: '16px' }}>
@@ -861,7 +822,7 @@ export default function SurveyDetail() {
             >
               {isUpdating ? '저장 중...' : '날짜 저장'}
             </button>
-            {(survey.adminDates?.COIDate || survey.adminDates?.SIGNDate || survey.adminDates?.cashin) && (
+            {(survey.adminDates?.COIDate || survey.adminDates?.SIGNDate) && (
               <span className="saved-indicator" style={{ marginLeft: '12px' }}>
                 ✓ 저장됨
               </span>
