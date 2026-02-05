@@ -2111,6 +2111,10 @@ export const COMPUTED_VARIABLES = [
   { id: 'hasSingleDirectors', label: 'Has Single Director (이사 1명)', group: 'directors' },
   { id: 'hasMultipleFounders', label: 'Has Multiple Founders (주주 2명 이상)', group: 'founders' },
   { id: 'hasSingleFounders', label: 'Has Single Founder (주주 1명)', group: 'founders' },
+  { id: 'hasIndividualFounder', label: 'Has Individual Founder (개인 주주 1명 이상)', group: 'founders' },
+  { id: 'hasCorporationFounder', label: 'Has Corporation Founder (법인 주주 1명 이상)', group: 'founders' },
+  { id: 'individualFoundersCount', label: 'Individual Founders Count (개인 주주 수)', group: 'founders' },
+  { id: 'corporationFoundersCount', label: 'Corporation Founders Count (법인 주주 수)', group: 'founders' },
 ];
 
 /**
@@ -2139,6 +2143,17 @@ export function computeVariablesFromResponses(
       const capitalizedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
       computed[`hasMultiple${capitalizedName}`] = groupItems.length >= 2 ? 'true' : '';
       computed[`hasSingle${capitalizedName}`] = groupItems.length === 1 ? 'true' : '';
+
+      // founders 전용: Individual/Corporation 구분
+      if (baseName === 'founders') {
+        const individualFounders = groupItems.filter(item => item['type']?.toLowerCase() !== 'corporation');
+        const corporationFounders = groupItems.filter(item => item['type']?.toLowerCase() === 'corporation');
+
+        computed['individualFoundersCount'] = individualFounders.length;
+        computed['corporationFoundersCount'] = corporationFounders.length;
+        computed['hasIndividualFounder'] = individualFounders.length >= 1 ? 'true' : '';
+        computed['hasCorporationFounder'] = corporationFounders.length >= 1 ? 'true' : '';
+      }
     }
   }
 

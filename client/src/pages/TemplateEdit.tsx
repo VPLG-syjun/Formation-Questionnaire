@@ -62,6 +62,10 @@ const COMPUTED_VARIABLES = [
   { id: 'hasSingleDirectors', label: 'Has Single Director (이사 1명)', type: 'boolean' },
   { id: 'hasMultipleFounders', label: 'Has Multiple Founders (주주 2명 이상)', type: 'boolean' },
   { id: 'hasSingleFounders', label: 'Has Single Founder (주주 1명)', type: 'boolean' },
+  { id: 'hasIndividualFounder', label: 'Has Individual Founder (개인 주주 1명 이상)', type: 'boolean' },
+  { id: 'hasCorporationFounder', label: 'Has Corporation Founder (법인 주주 1명 이상)', type: 'boolean' },
+  { id: 'individualFoundersCount', label: 'Individual Founders Count (개인 주주 수)', type: 'number' },
+  { id: 'corporationFoundersCount', label: 'Corporation Founders Count (법인 주주 수)', type: 'number' },
 ];
 
 const DATA_TYPES = [
