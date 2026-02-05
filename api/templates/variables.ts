@@ -21,13 +21,20 @@ const LOOP_CONTEXT_FIELDS = [
 ];
 
 // 이름 기반 자동 생성 변수 (설문 데이터에서 자동 추출)
+// 참고: 모든 설문 응답은 questionId와 동일한 변수명으로 자동 생성됨
 const NAME_BASED_AUTO_VARIABLES = [
-  // 회사 정보 변수
+  // 회사 기본 정보 (설문 응답)
+  'companyName', 'CompanyName', 'COMPANYNAME',
+  'companyName2', 'CompanyName2',
+  'companyName3', 'CompanyName3',
+  'info', 'Info',
+  'designator', 'Designator', 'DESIGNATOR',
+
+  // 회사 주소 변수
   'companyAddress', 'CompanyAddress', 'COMPANYADDRESS',
   'usAddress', 'USAddress', 'USADDRESS',
   'krAddress', 'KRAddress', 'KRADDRESS',
   'hasUSAddress',
-  'designator', 'Designator', 'DESIGNATOR',
 
   // 날짜 관련 자동 생성 변수
   'currentDate', 'CurrentDate', 'CURRENTDATE',
@@ -40,6 +47,12 @@ const NAME_BASED_AUTO_VARIABLES = [
   'COIDate', 'COIDateShort', 'COIDateISO', 'COIDateKR',
   'SIGNDate', 'SIGNDateShort', 'SIGNDateISO', 'SIGNDateKR',
   'SIGNYear', 'signYear', 'SIGNYEAR',
+
+  // Officer 이름 변수 (설문 응답에서 자동 생성)
+  'ceoName', 'CeoName', 'CEOName', 'CEONAME',
+  'cfoName', 'CfoName', 'CFOName', 'CFONAME',
+  'csName', 'CsName', 'CSName', 'CSNAME',
+  'chairmanName', 'ChairmanName', 'CHAIRMANNAME',
 
   // BankConsent 직책 변수
   'BankConsentTitle', 'bankConsentTitle',
