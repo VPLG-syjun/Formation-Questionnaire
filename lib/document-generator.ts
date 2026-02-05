@@ -1084,34 +1084,52 @@ export function transformSurveyToVariables(
       // SHSIGNDate 계산:
       // - cashin 날짜가 15일 이전(1-14일): 같은 달의 마지막 영업일
       // - cashin 날짜가 15일 이후(15-31일): 다음 달의 마지막 영업일
+      try {
+        // 날짜 파싱 (YYYY-MM-DD 형식 또는 Date 객체로 처리)
+        let cashinYear: number, cashinMonth: number, dayOfMonth: number;
 
-      // 날짜 파싱 (YYYY-MM-DD 형식 처리)
-      const dateParts = cashinValue.split('-');
-      const cashinYear = parseInt(dateParts[0], 10);
-      const cashinMonth = parseInt(dateParts[1], 10) - 1; // 0-indexed
-      const dayOfMonth = parseInt(dateParts[2], 10);
+        if (cashinValue.includes('-')) {
+          const dateParts = cashinValue.split('-');
+          cashinYear = parseInt(dateParts[0], 10);
+          cashinMonth = parseInt(dateParts[1], 10) - 1; // 0-indexed
+          dayOfMonth = parseInt(dateParts[2], 10);
+        } else {
+          // 다른 형식인 경우 Date 객체로 파싱
+          const parsedDate = new Date(cashinValue);
+          cashinYear = parsedDate.getFullYear();
+          cashinMonth = parsedDate.getMonth();
+          dayOfMonth = parsedDate.getDate();
+        }
 
-      // 대상 월 결정 (15일 이전이면 같은 달, 15일 이후면 다음 달)
-      let targetMonth = dayOfMonth < 15 ? cashinMonth : cashinMonth + 1;
-      let targetYear = cashinYear;
+        // NaN 체크
+        if (isNaN(cashinYear) || isNaN(cashinMonth) || isNaN(dayOfMonth)) {
+          console.log(`[transformSurveyToVariables] Invalid cashin date format: ${cashinValue}`);
+        } else {
+          // 대상 월 결정 (15일 이전이면 같은 달, 15일 이후면 다음 달)
+          let targetMonth = dayOfMonth < 15 ? cashinMonth : cashinMonth + 1;
+          let targetYear = cashinYear;
 
-      // 연도 넘김 처리 (12월 15일 이후면 다음 해 1월)
-      if (targetMonth > 11) {
-        targetMonth = 0;
-        targetYear = cashinYear + 1;
+          // 연도 넘김 처리 (12월 15일 이후면 다음 해 1월)
+          if (targetMonth > 11) {
+            targetMonth = 0;
+            targetYear = cashinYear + 1;
+          }
+
+          // 대상 월의 마지막 날 (다음 달 0일 = 이번 달 마지막 날)
+          const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
+          // 마지막 영업일 계산 (토요일=6, 일요일=0 제외)
+          while (lastDayOfMonth.getDay() === 0 || lastDayOfMonth.getDay() === 6) {
+            lastDayOfMonth.setDate(lastDayOfMonth.getDate() - 1);
+          }
+
+          result['SHSIGNDate'] = formatDate(lastDayOfMonth.toISOString(), 'MMMM D, YYYY');
+          result['SHSIGNDateShort'] = formatDate(lastDayOfMonth.toISOString(), 'MM/DD/YYYY');
+          result['SHSIGNDateISO'] = formatDate(lastDayOfMonth.toISOString(), 'YYYY-MM-DD');
+          console.log(`[transformSurveyToVariables] Cashin: ${cashinValue}, SHSIGNDate: ${result['SHSIGNDate']}`);
+        }
+      } catch (e) {
+        console.log(`[transformSurveyToVariables] Error calculating SHSIGNDate from cashin: ${cashinValue}`, e);
       }
-
-      // 대상 월의 마지막 날 (다음 달 0일 = 이번 달 마지막 날)
-      const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
-      // 마지막 영업일 계산 (토요일=6, 일요일=0 제외)
-      while (lastDayOfMonth.getDay() === 0 || lastDayOfMonth.getDay() === 6) {
-        lastDayOfMonth.setDate(lastDayOfMonth.getDate() - 1);
-      }
-
-      result['SHSIGNDate'] = formatDate(lastDayOfMonth.toISOString(), 'MMMM D, YYYY');
-      result['SHSIGNDateShort'] = formatDate(lastDayOfMonth.toISOString(), 'MM/DD/YYYY');
-      result['SHSIGNDateISO'] = formatDate(lastDayOfMonth.toISOString(), 'YYYY-MM-DD');
-      console.log(`[transformSurveyToVariables] Cashin: ${cashinValue}, SHSIGNDate: ${result['SHSIGNDate']}`);
     }
   }
 
