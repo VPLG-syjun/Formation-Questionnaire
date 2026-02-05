@@ -144,9 +144,9 @@ export default function SurveyForm() {
 
       // 임원 목록 (CEO, CFO, CS)
       const officerFields = [
-        { id: 'ceoName', label: 'CEO' },
-        { id: 'cfoName', label: 'CFO' },
-        { id: 'csName', label: 'Corporate Secretary' },
+        { id: 'ceoName', label: '임원 - CEO' },
+        { id: 'cfoName', label: '임원 - CFO' },
+        { id: 'csName', label: '임원 - Corporate Secretary' },
       ];
       officerFields.forEach(officer => {
         const name = (answers[officer.id] as string)?.trim();

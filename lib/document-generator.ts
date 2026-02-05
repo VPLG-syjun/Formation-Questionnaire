@@ -58,7 +58,13 @@ export interface Template {
   variables?: VariableMapping[];
   isActive: boolean;
   repeatForPersons?: boolean;  // 인원별 반복 생성 여부
-  personTypeFilter?: 'all' | 'individual' | 'corporation';  // 인원별 생성 시 필터 (individual/corporation founder만)
+  personTypeFilter?: 'all' | 'individual' | 'corporation' | 'individual_founder' | 'corporation_founder';
+  // 인원별 생성 필터:
+  // - 'all': 모든 인원
+  // - 'individual': 개인 주주 + 이사 + 임원 (IA, IPAA용 - 법인 주주 제외)
+  // - 'individual_founder': 개인 주주만 (CSPA, RSPA용)
+  // - 'corporation': 법인만 (이사/임원 제외, 구버전 호환)
+  // - 'corporation_founder': 법인 주주만 (CSPA Entity용)
 }
 
 export interface TemplateSelection {

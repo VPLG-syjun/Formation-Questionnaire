@@ -130,7 +130,7 @@ export default function TemplateEdit() {
     displayName: '',
     category: '법인설립',
     repeatForPersons: false,  // 인원별 반복 생성 여부
-    personTypeFilter: 'all' as 'all' | 'individual' | 'corporation',  // 인원 필터
+    personTypeFilter: 'all' as 'all' | 'individual' | 'corporation' | 'individual_founder' | 'corporation_founder',
   });
 
   // 변수 매핑
@@ -605,19 +605,23 @@ export default function TemplateEdit() {
               <strong>인원별 반복 생성 활성화됨</strong>
               <select
                 value={formData.personTypeFilter}
-                onChange={(e) => setFormData({ ...formData, personTypeFilter: e.target.value as 'all' | 'individual' | 'corporation' })}
+                onChange={(e) => setFormData({ ...formData, personTypeFilter: e.target.value as 'all' | 'individual' | 'corporation' | 'individual_founder' | 'corporation_founder' })}
                 style={{ padding: '4px 8px', fontSize: '0.85rem' }}
               >
                 <option value="all">모든 인원</option>
-                <option value="individual">개인(Individual) 주주만</option>
-                <option value="corporation">법인(Corporation) 주주만</option>
+                <option value="individual">개인 주주 + 이사 + 임원 (IA, IPAA용)</option>
+                <option value="individual_founder">개인 주주만 (CSPA, RSPA용)</option>
+                <option value="corporation_founder">법인 주주만 (CSPA Entity용)</option>
               </select>
             </div>
-            문서 생성 시 설문에 등장한 {formData.personTypeFilter === 'all' ? '모든 인원' : formData.personTypeFilter === 'individual' ? '개인 주주' : '법인 주주'}(주주, 이사, CEO, CFO, Corporate Secretary 등) 중 선택한 인원 각각에 대해 개별 문서가 생성됩니다.
+            {formData.personTypeFilter === 'all' && '모든 인원(주주, 이사, 임원) 중 선택한 인원에 대해 문서가 생성됩니다.'}
+            {formData.personTypeFilter === 'individual' && '개인 주주 + 이사 + 임원 중 선택한 인원에 대해 문서가 생성됩니다. (법인 주주 제외)'}
+            {formData.personTypeFilter === 'individual_founder' && '개인 주주만 선택 가능합니다. (이사, 임원, 법인 주주 제외)'}
+            {formData.personTypeFilter === 'corporation_founder' && '법인 주주만 선택 가능합니다.'}
             <br />
             <span style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
               템플릿에서 사용할 변수: {'{PersonName}'}, {'{PersonAddress}'}, {'{PersonEmail}'}, {'{PersonRoles}'}
-              {formData.personTypeFilter === 'corporation' && ', {PersonCeoName}'}
+              {(formData.personTypeFilter === 'corporation' || formData.personTypeFilter === 'corporation_founder') && ', {PersonCeoName}'}
             </span>
           </div>
         )}

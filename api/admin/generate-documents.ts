@@ -654,12 +654,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             // personTypeFilter에 따라 해당 인원을 건너뛰기
-            if (personTypeFilter === 'individual' && person.type === 'corporation') {
-              console.log(`[DEBUG] Skipping corporation ${person.name} for individual-only template ${templateId}`);
+            const isFounder = person.roles.includes('Founder');
+            const isCorporation = person.type === 'corporation';
+
+            // 'individual': 법인 주주 제외 (IA, IPAA용 - 개인주주 + 이사 + 임원)
+            if (personTypeFilter === 'individual' && isCorporation) {
+              console.log(`[DEBUG] Skipping corporation ${person.name} for individual template ${templateId}`);
               continue;
             }
-            if (personTypeFilter === 'corporation' && person.type !== 'corporation') {
-              console.log(`[DEBUG] Skipping individual ${person.name} for corporation-only template ${templateId}`);
+            // 'individual_founder': 개인 주주만 (CSPA, RSPA용 - 이사/임원 제외)
+            if (personTypeFilter === 'individual_founder' && (!isFounder || isCorporation)) {
+              console.log(`[DEBUG] Skipping ${person.name} (founder:${isFounder}, corp:${isCorporation}) for individual_founder template ${templateId}`);
+              continue;
+            }
+            // 'corporation' 또는 'corporation_founder': 법인 주주만 (CSPA Entity용)
+            if ((personTypeFilter === 'corporation' || personTypeFilter === 'corporation_founder') && !isCorporation) {
+              console.log(`[DEBUG] Skipping non-corporation ${person.name} for corporation template ${templateId}`);
               continue;
             }
 

@@ -109,8 +109,23 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
 
       allTemplates.forEach(template => {
         if (template.repeatForPersons) {
-          // 기본적으로 모든 인원 선택
-          initialRepeatSelections[template.id] = persons.map((_, idx) => idx);
+          // personTypeFilter에 따라 필터링된 인원만 기본 선택
+          const personTypeFilter = (template as any).personTypeFilter as string | undefined;
+          const filteredIndices: number[] = [];
+
+          persons.forEach((person, idx) => {
+            const isFounder = person.roles.includes('Founder');
+            const isCorporation = person.type === 'corporation';
+
+            // 필터 조건에 맞는 인원만 선택
+            if (personTypeFilter === 'individual' && isCorporation) return;
+            if (personTypeFilter === 'individual_founder' && (!isFounder || isCorporation)) return;
+            if ((personTypeFilter === 'corporation' || personTypeFilter === 'corporation_founder') && !isCorporation) return;
+
+            filteredIndices.push(idx);
+          });
+
+          initialRepeatSelections[template.id] = filteredIndices;
         }
       });
 
@@ -129,6 +144,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
     address?: string;
     email?: string;
     cash?: string;  // 창업자인 경우 출자금
+    type?: 'individual' | 'corporation';  // Founder의 경우 개인/법인 구분
   }
 
   const extractAllPersonsFromSurvey = (surveyData: Survey): PersonWithRoles[] => {
@@ -164,15 +180,21 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
     // 2. Founders (창업자/주주)
     const foundersAnswer = surveyData.answers?.find(a => a.questionId === 'founders');
     if (foundersAnswer && Array.isArray(foundersAnswer.value)) {
-      for (const founder of foundersAnswer.value as Array<{ name: string; address?: string; email?: string; cash?: string }>) {
+      for (const founder of foundersAnswer.value as Array<{ name: string; address?: string; email?: string; cash?: string; type?: string }>) {
         const name = founder.name?.trim();
         if (!name) continue;
+
+        const founderType = (founder.type?.toLowerCase() === 'corporation' ? 'corporation' : 'individual') as 'individual' | 'corporation';
 
         if (personMap.has(name)) {
           personMap.get(name)!.roles.push('Founder');
           if (!personMap.get(name)!.address && founder.address) personMap.get(name)!.address = founder.address;
           if (!personMap.get(name)!.email && founder.email) personMap.get(name)!.email = founder.email;
           if (founder.cash) personMap.get(name)!.cash = founder.cash;
+          // 법인 타입인 경우에만 type 설정 (개인은 기본값)
+          if (founderType === 'corporation') {
+            personMap.get(name)!.type = 'corporation';
+          }
         } else {
           personMap.set(name, {
             name,
@@ -180,6 +202,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
             address: founder.address,
             email: founder.email,
             cash: founder.cash,
+            type: founderType,
           });
         }
       }
@@ -653,6 +676,27 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
 
                     {repeatTemplates.map(template => {
                       const selectedPersonIndices = repeatForSelections[template.id] || [];
+                      const personTypeFilter = (template as any).personTypeFilter as string | undefined;
+
+                      // personTypeFilter에 따라 인원 필터링
+                      const filteredPersonsWithIndex = allPersons
+                        .map((person, idx) => ({ person, idx }))
+                        .filter(({ person }) => {
+                          const isFounder = person.roles.includes('Founder');
+                          const isCorporation = person.type === 'corporation';
+
+                          if (personTypeFilter === 'individual' && isCorporation) return false;
+                          if (personTypeFilter === 'individual_founder' && (!isFounder || isCorporation)) return false;
+                          if ((personTypeFilter === 'corporation' || personTypeFilter === 'corporation_founder') && !isCorporation) return false;
+                          return true;
+                        });
+
+                      const filterDescription = {
+                        'individual': '(개인 주주 + 이사 + 임원)',
+                        'individual_founder': '(개인 주주만)',
+                        'corporation_founder': '(법인 주주만)',
+                        'corporation': '(법인만)',
+                      }[personTypeFilter || ''] || '';
 
                       return (
                         <div key={template.id} style={{
@@ -663,12 +707,22 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                           marginBottom: '12px',
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <strong>{template.displayName || template.name}</strong>
+                            <div>
+                              <strong>{template.displayName || template.name}</strong>
+                              {filterDescription && (
+                                <span style={{ marginLeft: '8px', fontSize: '0.8rem', color: 'var(--color-gray-500)' }}>
+                                  {filterDescription}
+                                </span>
+                              )}
+                            </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline"
-                                onClick={() => handleSelectAllPersons(template.id, true)}
+                                onClick={() => {
+                                  const indices = filteredPersonsWithIndex.map(p => p.idx);
+                                  setRepeatForSelections(prev => ({ ...prev, [template.id]: indices }));
+                                }}
                               >
                                 전체 선택
                               </button>
@@ -683,7 +737,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                           </div>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {allPersons.map((person, idx) => (
+                            {filteredPersonsWithIndex.map(({ person, idx }) => (
                               <label
                                 key={idx}
                                 style={{
