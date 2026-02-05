@@ -1084,14 +1084,22 @@ export function transformSurveyToVariables(
       // SHSIGNDate 계산:
       // - cashin 날짜가 15일 이전(1-14일): 같은 달의 마지막 영업일
       // - cashin 날짜가 15일 이후(15-31일): 다음 달의 마지막 영업일
-      const cashinDate = new Date(cashinValue);
-      const dayOfMonth = cashinDate.getDate();
+
+      // 날짜 파싱 (YYYY-MM-DD 형식 처리)
+      const dateParts = cashinValue.split('-');
+      const cashinYear = parseInt(dateParts[0], 10);
+      const cashinMonth = parseInt(dateParts[1], 10) - 1; // 0-indexed
+      const dayOfMonth = parseInt(dateParts[2], 10);
 
       // 대상 월 결정 (15일 이전이면 같은 달, 15일 이후면 다음 달)
-      const targetMonth = dayOfMonth < 15
-        ? cashinDate.getMonth()
-        : cashinDate.getMonth() + 1;
-      const targetYear = cashinDate.getFullYear();
+      let targetMonth = dayOfMonth < 15 ? cashinMonth : cashinMonth + 1;
+      let targetYear = cashinYear;
+
+      // 연도 넘김 처리 (12월 15일 이후면 다음 해 1월)
+      if (targetMonth > 11) {
+        targetMonth = 0;
+        targetYear = cashinYear + 1;
+      }
 
       // 대상 월의 마지막 날 (다음 달 0일 = 이번 달 마지막 날)
       const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
@@ -1309,6 +1317,49 @@ export function transformSurveyToVariables(
           } : {}),
         };
       });
+
+      // 단수형 변수 추가 (첫 번째 항목 참조) - founderName, directorName 등
+      // 인덱스 없는 변수는 첫 번째 항목을 가리킴
+      if (groupItems.length > 0) {
+        const firstItem = groupItems[0];
+        const singular = baseName.slice(0, -1); // founders -> founder
+        const singularCap = singular.charAt(0).toUpperCase() + singular.slice(1); // Founder
+
+        for (const fieldName of Object.keys(firstItem)) {
+          const val = firstItem[fieldName] || '';
+          const fieldCap = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+          let formattedVal = val;
+
+          // 포맷팅 적용
+          if (fieldName.toLowerCase() === 'cash' && val) {
+            const numVal = parseFloat(val.replace(/,/g, ''));
+            if (!isNaN(numVal)) formattedVal = formatCurrency(numVal);
+          } else if (fieldName.toLowerCase() === 'name' && val) {
+            const itemType = firstItem['type']?.toLowerCase();
+            if (baseName === 'founders' && itemType === 'corporation') {
+              formattedVal = capitalize(val);
+            } else {
+              formattedVal = toTitleCase(val);
+            }
+          } else if (fieldName.toLowerCase() === 'ceoname' && val) {
+            formattedVal = toTitleCase(val);
+          }
+
+          // founderName, FounderName, foundername 등
+          result[`${singular}${fieldCap}`] = formattedVal;
+          result[`${singularCap}${fieldCap}`] = formattedVal;
+          result[`${singular}${fieldName}`] = formattedVal;
+        }
+
+        // founder, Founder 변수 (첫 번째 founder의 name)
+        const firstName = firstItem['name'] || '';
+        const firstType = firstItem['type']?.toLowerCase();
+        const formattedFirstName = (baseName === 'founders' && firstType === 'corporation')
+          ? capitalize(firstName)
+          : toTitleCase(firstName);
+        result[singular] = formattedFirstName;
+        result[singularCap] = formattedFirstName;
+      }
     }
   }
 
