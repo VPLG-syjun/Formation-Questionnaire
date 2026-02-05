@@ -1377,6 +1377,50 @@ export function transformSurveyToVariables(
           : toTitleCase(firstName);
         result[singular] = formattedFirstName;
         result[singularCap] = formattedFirstName;
+
+        // founders 전용: Individual/Corporation 별도 변수
+        if (baseName === 'founders') {
+          // 첫 번째 Individual founder 찾기
+          const individualFounder = groupItems.find(item => item['type']?.toLowerCase() !== 'corporation');
+          if (individualFounder) {
+            const indivName = toTitleCase(individualFounder['name'] || '');
+            const indivAddress = individualFounder['address'] || '';
+            const indivEmail = individualFounder['email'] || '';
+            const indivCash = individualFounder['cash'] || '';
+            const formattedIndivCash = indivCash ? formatCurrency(parseFloat(indivCash.replace(/,/g, ''))) : '';
+
+            result['individualFounderName'] = indivName;
+            result['IndividualFounderName'] = indivName;
+            result['individualFounderAddress'] = indivAddress;
+            result['IndividualFounderAddress'] = indivAddress;
+            result['individualFounderEmail'] = indivEmail;
+            result['IndividualFounderEmail'] = indivEmail;
+            result['individualFounderCash'] = formattedIndivCash;
+            result['IndividualFounderCash'] = formattedIndivCash;
+          }
+
+          // 첫 번째 Corporation founder 찾기
+          const corpFounder = groupItems.find(item => item['type']?.toLowerCase() === 'corporation');
+          if (corpFounder) {
+            const corpName = capitalize(corpFounder['name'] || '');
+            const corpCeoName = toTitleCase(corpFounder['ceoName'] || corpFounder['ceoname'] || '');
+            const corpAddress = corpFounder['address'] || '';
+            const corpEmail = corpFounder['email'] || '';
+            const corpCash = corpFounder['cash'] || '';
+            const formattedCorpCash = corpCash ? formatCurrency(parseFloat(corpCash.replace(/,/g, ''))) : '';
+
+            result['corporationFounderName'] = corpName;
+            result['CorporationFounderName'] = corpName;
+            result['corporationFounderCeoName'] = corpCeoName;
+            result['CorporationFounderCeoName'] = corpCeoName;
+            result['corporationFounderAddress'] = corpAddress;
+            result['CorporationFounderAddress'] = corpAddress;
+            result['corporationFounderEmail'] = corpEmail;
+            result['CorporationFounderEmail'] = corpEmail;
+            result['corporationFounderCash'] = formattedCorpCash;
+            result['CorporationFounderCash'] = formattedCorpCash;
+          }
+        }
       }
     }
   }

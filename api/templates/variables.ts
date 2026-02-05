@@ -83,6 +83,17 @@ const NAME_BASED_AUTO_VARIABLES = [
   'FounderCash', 'founderCash',
   'FounderShare', 'founderShare',  // Founder용 PersonShare
   'FounderCeoName', 'founderCeoName', 'FounderCEOName',  // 법인 Founder CEO 이름
+
+  // Individual/Corporation Founder 전용 변수
+  'individualFounderName', 'IndividualFounderName',
+  'individualFounderAddress', 'IndividualFounderAddress',
+  'individualFounderEmail', 'IndividualFounderEmail',
+  'individualFounderCash', 'IndividualFounderCash',
+  'corporationFounderName', 'CorporationFounderName',
+  'corporationFounderCeoName', 'CorporationFounderCeoName',
+  'corporationFounderAddress', 'CorporationFounderAddress',
+  'corporationFounderEmail', 'CorporationFounderEmail',
+  'corporationFounderCash', 'CorporationFounderCash',
   'DirectorName', 'directorName',
   'DirectorAddress', 'directorAddress',
   'DirectorEmail', 'directorEmail',
