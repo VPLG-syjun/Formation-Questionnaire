@@ -1065,6 +1065,39 @@ export function transformSurveyToVariables(
 
   console.log(`[transformSurveyToVariables] Company address: hasUS=${hasUSAddress}, selected="${companyAddress}"`);
 
+  // 4b. 모든 설문 응답을 변수로 자동 생성 (questionId = 변수명)
+  // 반복 그룹, 관리자 값(__로 시작)은 별도 처리되므로 제외
+  for (const response of responses) {
+    const questionId = response.questionId;
+    const value = response.value;
+
+    // 관리자 값은 별도 처리
+    if (questionId.startsWith('__')) continue;
+
+    // 반복 그룹(객체 배열)은 별도 처리
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') continue;
+
+    // 단순 문자열 값
+    if (typeof value === 'string') {
+      result[questionId] = value;
+      // 첫글자 대문자 버전도 생성
+      const capitalizedKey = questionId.charAt(0).toUpperCase() + questionId.slice(1);
+      result[capitalizedKey] = value;
+    }
+    // 문자열 배열 (체크박스 등)
+    else if (Array.isArray(value)) {
+      const stringArray = value as string[];
+      result[questionId] = stringArray.join(', ');
+      result[`${questionId}List`] = stringArray.join(', ');
+      result[`${questionId}Formatted`] = formatListAnd(stringArray);
+      // 첫글자 대문자 버전
+      const capitalizedKey = questionId.charAt(0).toUpperCase() + questionId.slice(1);
+      result[capitalizedKey] = result[questionId];
+    }
+  }
+
+  console.log('[transformSurveyToVariables] Auto-generated variables from responses:', Object.keys(result).length);
+
   // 5. 반복 그룹 데이터 처리 (directors, founders 등)
   console.log('[transformSurveyToVariables] Step 5: Processing repeating groups');
   console.log('[transformSurveyToVariables] All responses questionIds:', responses.map(r => r.questionId));
