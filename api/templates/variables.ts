@@ -89,7 +89,9 @@ const NAME_BASED_AUTO_VARIABLES = [
 
   // 반복 그룹 배열 변수 (docxtemplater 루프용)
   'founders', 'Founders', 'FOUNDERS',
+  'founder', 'Founder', 'FOUNDER',  // 단수형
   'directors', 'Directors', 'DIRECTORS',
+  'director', 'Director', 'DIRECTOR',  // 단수형
 
   // 주식 관련 자동 생성 변수
   'authorizedShares', 'AuthorizedShares',
