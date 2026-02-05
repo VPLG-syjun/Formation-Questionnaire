@@ -66,7 +66,6 @@ const COMPUTED_VARIABLES = [
 
 const DATA_TYPES = [
   { value: 'text', label: '텍스트' },
-  { value: 'list', label: '리스트 (배열)' },
   { value: 'date', label: '날짜' },
   { value: 'number', label: '숫자' },
   { value: 'currency', label: '금액' },
@@ -79,18 +78,8 @@ const TRANSFORM_RULES: Record<string, { value: string; label: string }[]> = {
     { value: 'none', label: 'None' },
     { value: 'uppercase', label: 'UPPERCASE' },
     { value: 'lowercase', label: 'lowercase' },
-    { value: 'capitalize', label: 'Capitalize' },
-    { value: 'title', label: 'Title Case' },
-    { value: 'list_and', label: 'List: A, B, and C' },
-    { value: 'list_or', label: 'List: A, B, or C' },
-    { value: 'list_comma', label: 'List: A, B, C' },
-  ],
-  list: [
-    { value: 'list_and', label: 'A, B, and C (Recommended)' },
-    { value: 'list_or', label: 'A, B, or C' },
-    { value: 'list_comma', label: 'A, B, C' },
-    { value: 'list_newline', label: '줄바꿈으로 구분' },
-    { value: 'none', label: 'None (기본: A, B, and C)' },
+    { value: 'capitalize', label: 'Capitalize (회사명)' },
+    { value: 'title', label: 'Title Case (사람 이름)' },
   ],
   date: [
     { value: 'MMMM D, YYYY', label: 'January 1, 2026 (Recommended)' },
@@ -239,16 +228,45 @@ export default function TemplateEdit() {
           if (isAuto) {
             let dataType = 'text';
             let transformRule = 'none';
+            const nameLower = name.toLowerCase();
 
-            // Cash 필드는 currency로
-            if (name.toLowerCase().includes('cash')) {
+            // 사람 이름 필드 → Title Case
+            const personNamePatterns = ['ceoname', 'cfoname', 'csname', 'agentname', 'registeredagentname', 'incorporatorname', 'chairmanname'];
+            const isFounderName = nameLower.includes('founder') && nameLower.includes('name');
+            const isDirectorName = nameLower.includes('director') && nameLower.includes('name');
+
+            if (personNamePatterns.some(p => nameLower.includes(p)) || isFounderName || isDirectorName) {
+              dataType = 'text';
+              transformRule = 'title';
+            }
+            // 회사/법인 이름 필드 → Capitalize
+            else if (nameLower.includes('companyname') || nameLower.includes('corporationname') ||
+                     nameLower.includes('businessname') || nameLower.includes('entityname')) {
+              dataType = 'text';
+              transformRule = 'capitalize';
+            }
+            // Designator → Capitalize
+            else if (nameLower.includes('designator')) {
+              dataType = 'text';
+              transformRule = 'capitalize';
+            }
+            // Cash/FMV/금액 필드 → Currency $1,000
+            else if (nameLower.includes('cash') || nameLower.includes('fmv') ||
+                     nameLower.includes('fairmarketvalue') || nameLower.includes('price') ||
+                     nameLower.includes('amount') || nameLower.includes('parvalue')) {
               dataType = 'currency';
               transformRule = 'comma_dollar';
             }
-            // Share 필드는 number로
-            else if (name.toLowerCase().includes('share')) {
+            // Share 필드 → Number 1,000
+            else if (nameLower.includes('share') || nameLower.includes('authorized') ||
+                     nameLower.includes('issued')) {
               dataType = 'number';
               transformRule = 'comma';
+            }
+            // 날짜 필드 → Date
+            else if (nameLower.includes('date') || nameLower.includes('signdate')) {
+              dataType = 'date';
+              transformRule = 'MMMM D, YYYY';
             }
 
             return {
