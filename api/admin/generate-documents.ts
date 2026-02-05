@@ -12,6 +12,7 @@ import {
   VariableMapping,
   formatNumberWithComma,
   toTitleCase,
+  capitalize,
 } from '../../lib/document-generator.js';
 
 // Redis Keys
@@ -99,6 +100,7 @@ interface PersonWithRoles {
   email?: string;
   cash?: string;
   type?: 'individual' | 'corporation';  // Founder의 경우 개인/법인 구분
+  ceoName?: string;  // 법인인 경우 해당 법인의 CEO 이름
 }
 
 function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
@@ -134,11 +136,13 @@ function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
   // 2. Founders (창업자/주주)
   const foundersResponse = responses.find(r => r.questionId === 'founders');
   if (foundersResponse && Array.isArray(foundersResponse.value)) {
-    for (const founder of foundersResponse.value as Array<{ name?: string; address?: string; email?: string; cash?: string; type?: string }>) {
+    for (const founder of foundersResponse.value as Array<{ name?: string; address?: string; email?: string; cash?: string; type?: string; ceoName?: string; ceoname?: string }>) {
       const name = founder.name?.trim();
       if (!name) continue;
 
       const founderType = (founder.type?.toLowerCase() === 'corporation' ? 'corporation' : 'individual') as 'individual' | 'corporation';
+      // 법인인 경우 ceoName 추출 (대소문자 모두 지원)
+      const founderCeoName = founder.ceoName || founder.ceoname || '';
 
       if (personMap.has(name)) {
         personMap.get(name)!.roles.push('Founder');
@@ -146,7 +150,10 @@ function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
         if (!personMap.get(name)!.email && founder.email) personMap.get(name)!.email = founder.email;
         if (founder.cash) personMap.get(name)!.cash = founder.cash;
         // 법인 타입인 경우에만 type 설정 (개인은 기본값)
-        if (founderType === 'corporation') personMap.get(name)!.type = 'corporation';
+        if (founderType === 'corporation') {
+          personMap.get(name)!.type = 'corporation';
+          if (founderCeoName) personMap.get(name)!.ceoName = founderCeoName;
+        }
       } else {
         personMap.set(name, {
           name,
@@ -155,6 +162,7 @@ function extractAllPersons(responses: SurveyResponse[]): PersonWithRoles[] {
           email: founder.email,
           cash: founder.cash,
           type: founderType,
+          ceoName: founderType === 'corporation' ? founderCeoName : undefined,
         });
       }
     }
@@ -243,11 +251,14 @@ function createPersonVariables(
     address: person.address || '(none)',
     email: person.email || '(none)',
     cash: person.cash || '(none)',
+    ceoName: person.ceoName || '(none)',
   });
 
-  // 이름에 Title Case 적용 (법인은 제외)
+  // 이름에 Title Case 적용 (법인은 Capitalize)
   const isCorporation = person.type === 'corporation';
-  const formattedName = isCorporation ? (person.name || '') : toTitleCase(person.name || '');
+  const formattedName = isCorporation
+    ? capitalize(person.name || '')  // 법인명은 Capitalize
+    : toTitleCase(person.name || '');  // 개인명은 Title Case
 
   // 공통 인원 변수 (항상 설정, 빈 문자열 포함)
   personVars['PersonName'] = formattedName;
@@ -258,6 +269,18 @@ function createPersonVariables(
   personVars['personEmail'] = person.email || '';
   personVars['PersonRoles'] = person.roles.join(' / ');
   personVars['personRoles'] = person.roles.join(' / ');
+
+  // 법인인 경우 CEO 이름 설정 (Title Case 적용)
+  if (isCorporation && person.ceoName) {
+    const formattedCeoName = toTitleCase(person.ceoName);
+    personVars['PersonCeoName'] = formattedCeoName;
+    personVars['personCeoName'] = formattedCeoName;
+    personVars['PersonCEOName'] = formattedCeoName;
+  } else {
+    personVars['PersonCeoName'] = '';
+    personVars['personCeoName'] = '';
+    personVars['PersonCEOName'] = '';
+  }
 
   // 출자금 (항상 설정 - 빈 문자열 허용)
   // $ + comma 형식 적용 (예: $10,000)
@@ -319,6 +342,7 @@ function createPersonVariables(
     PersonAddress: personVars['PersonAddress'],
     PersonCash: personVars['PersonCash'],
     PersonShare: personVars['PersonShare'],
+    PersonCeoName: personVars['PersonCeoName'],
   });
 
   return personVars;
@@ -579,6 +603,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'PersonName', 'personName', 'PersonAddress', 'personAddress',
           'PersonEmail', 'personEmail', 'PersonRoles', 'personRoles',
           'PersonCash', 'personCash', 'PersonShare', 'personShare',
+          'PersonCeoName', 'personCeoName', 'PersonCEOName',
           'FounderName', 'founderName', 'FounderAddress', 'founderAddress',
           'FounderEmail', 'founderEmail', 'FounderCash', 'founderCash',
           'FounderShare', 'founderShare', 'DirectorName', 'directorName',
