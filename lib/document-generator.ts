@@ -487,7 +487,7 @@ export function formatPhone(phone: string | undefined, format: string = 'dashed'
 // ============================================
 
 /**
- * Title Case 변환 (이름에 사용)
+ * Title Case 변환 (사람 이름에 사용)
  * @example toTitleCase('john doe') → 'John Doe'
  * @example toTitleCase('JOHN DOE') → 'John Doe'
  */
@@ -498,6 +498,28 @@ export function toTitleCase(text: string | undefined): string {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+}
+
+/**
+ * Capitalize 변환 (회사명, 법인명에 사용 - 첫 글자만 대문자)
+ * @example capitalize('acme corporation') → 'Acme corporation'
+ * @example capitalize('ACME') → 'Acme'
+ */
+export function capitalize(text: string | undefined): string {
+  if (!text) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * 금액을 $1,000 형식으로 변환
+ * @example formatCurrency(10000) → '$10,000'
+ * @example formatCurrency('5000') → '$5,000'
+ */
+export function formatCurrency(value: string | number | undefined): string {
+  if (value === undefined || value === null || value === '') return '$0';
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
+  if (isNaN(num)) return '$0';
+  return '$' + formatNumberWithComma(num);
 }
 
 /**
@@ -1079,10 +1101,24 @@ export function transformSurveyToVariables(
 
     // 단순 문자열 값
     if (typeof value === 'string') {
-      result[questionId] = value;
+      // 회사/법인 이름 필드는 Capitalize 적용
+      const companyNameFields = ['companyname', 'corporationname', 'businessname', 'entityname'];
+      // 사람 이름 필드는 Title Case 적용
+      const personNameFields = ['ceoname', 'cfoname', 'csname', 'agentname', 'registeredagentname', 'incorporatorname'];
+
+      const questionIdLower = questionId.toLowerCase();
+      let formattedValue = value;
+
+      if (companyNameFields.includes(questionIdLower)) {
+        formattedValue = capitalize(value);
+      } else if (personNameFields.includes(questionIdLower)) {
+        formattedValue = toTitleCase(value);
+      }
+
+      result[questionId] = formattedValue;
       // 첫글자 대문자 버전도 생성
       const capitalizedKey = questionId.charAt(0).toUpperCase() + questionId.slice(1);
-      result[capitalizedKey] = value;
+      result[capitalizedKey] = formattedValue;
     }
     // 문자열 배열 (체크박스 등)
     else if (Array.isArray(value)) {
@@ -1130,11 +1166,11 @@ export function transformSurveyToVariables(
         const isNameField = nameFields.includes(fieldName.toLowerCase());
         const fieldValues = groupItems.map((item, itemIndex) => {
           const val = item[fieldName] || '';
-          // 숫자 필드인 경우 콤마 포맷팅 적용
+          // 숫자 필드(cash)인 경우 $1,000 형식으로 포맷팅
           if (isNumericField && val) {
             const numVal = parseFloat(val.replace(/,/g, ''));
             if (!isNaN(numVal)) {
-              return formatNumberWithComma(numVal);
+              return formatCurrency(numVal);
             }
           }
           // 이름 필드인 경우 Title Case 적용
@@ -1144,12 +1180,12 @@ export function transformSurveyToVariables(
             if (fieldName.toLowerCase() === 'ceoname') {
               return toTitleCase(val);
             }
-            // name 필드: Founder의 경우 type이 individual일 때만 Title Case
+            // name 필드: Founder의 경우 type에 따라 다른 포맷 적용
             if (fieldName.toLowerCase() === 'name') {
               const itemType = item['type']?.toLowerCase();
-              // founders 그룹이고 법인(corporation)인 경우 Title Case 적용 안함
+              // founders 그룹이고 법인(corporation)인 경우 Capitalize 적용
               if (baseName === 'founders' && itemType === 'corporation') {
-                return val; // 법인명은 그대로
+                return capitalize(val); // 법인명은 Capitalize
               }
               return toTitleCase(val); // 개인 이름은 Title Case
             }
@@ -1189,9 +1225,10 @@ export function transformSurveyToVariables(
 
         for (const [key, val] of Object.entries(item)) {
           if (numericFields.includes(key.toLowerCase()) && val) {
+            // cash 필드는 $1,000 형식으로 포맷팅
             const numVal = parseFloat(val.replace(/,/g, ''));
             if (!isNaN(numVal)) {
-              formattedItem[key] = formatNumberWithComma(numVal);
+              formattedItem[key] = formatCurrency(numVal);
             } else {
               formattedItem[key] = val;
             }
@@ -1200,9 +1237,9 @@ export function transformSurveyToVariables(
             if (key.toLowerCase() === 'ceoname') {
               formattedItem[key] = toTitleCase(val);
             } else if (key.toLowerCase() === 'name') {
-              // founders 법인은 Title Case 적용 안함
+              // founders 법인은 Capitalize 적용
               if (baseName === 'founders' && itemType === 'corporation') {
-                formattedItem[key] = val;
+                formattedItem[key] = capitalize(val);
               } else {
                 formattedItem[key] = toTitleCase(val);
               }
@@ -1261,10 +1298,11 @@ export function transformSurveyToVariables(
         ? String(rawValue[0])
         : '0';
 
-    result['fairMarketValue'] = fmvVal;
-    result['fairMarketValueDollar'] = '$' + fmvVal;
-    // FMV is a common alias used in templates (CSPA2 등)
-    result['FMV'] = '$' + fmvVal;
+    // 모든 금액은 $1,000 형식으로 통일
+    const fmvFormatted = formatCurrency(fmvVal);
+    result['fairMarketValue'] = fmvFormatted;
+    result['fairMarketValueDollar'] = fmvFormatted;
+    result['FMV'] = fmvFormatted;
   }
 
   // 5b. Officer 이름에 Title Case 적용 (CEO, CFO, CS, Chairman)
@@ -1736,10 +1774,12 @@ export function transformSurveyToVariables(
   }
 
   if (designatorValue) {
-    result['designator'] = designatorValue;
-    result['Designator'] = designatorValue;
-    result['DESIGNATOR'] = designatorValue;
-    console.log(`[transformSurveyToVariables] Designator: ${designatorValue}`);
+    // Designator는 Capitalize 처리
+    const capitalizedDesignator = capitalize(designatorValue);
+    result['designator'] = capitalizedDesignator;
+    result['Designator'] = capitalizedDesignator;
+    result['DESIGNATOR'] = capitalizedDesignator;
+    console.log(`[transformSurveyToVariables] Designator: ${capitalizedDesignator}`);
   }
 
   // 12. 대소문자 구분 없는 변수 처리 - 모든 변수에 대해 다양한 케이스 버전 생성
