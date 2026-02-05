@@ -1323,8 +1323,23 @@ export function transformSurveyToVariables(
         const isCorporation = baseName === 'founders' && itemType === 'corporation';
         const isIndividual = baseName === 'founders' && itemType !== 'corporation';
 
+        // founders 전용 별칭 추가 (FounderName, FounderCeoName 등)
+        const founderAliases = baseName === 'founders' ? {
+          FounderName: formattedItem['name'] || '',
+          founderName: formattedItem['name'] || '',
+          FounderCeoName: formattedItem['ceoName'] || formattedItem['ceoname'] || '',
+          founderCeoName: formattedItem['ceoName'] || formattedItem['ceoname'] || '',
+          FounderAddress: formattedItem['address'] || '',
+          founderAddress: formattedItem['address'] || '',
+          FounderEmail: formattedItem['email'] || '',
+          founderEmail: formattedItem['email'] || '',
+          FounderCash: formattedItem['cash'] || '',
+          founderCash: formattedItem['cash'] || '',
+        } : {};
+
         return {
           ...formattedItem,
+          ...founderAliases,
           index: index + 1,
           isFirst: index === 0,
           isLast: index === groupItems.length - 1,
