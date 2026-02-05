@@ -76,6 +76,10 @@ const NAME_BASED_AUTO_VARIABLES = [
   'fairMarketValue', 'FairMarketValue',
   'fairMarketValueDollar', 'FairMarketValueDollar',
   'FMV', 'fmv',
+
+  // Stock Ledger 합계 변수
+  'cashSum', 'CashSum', 'CASHSUM',  // 모든 Founder Cash 합계 ($1,000 형식)
+  'shareSum', 'ShareSum', 'SHARESUM',  // 모든 Founder Share 합계 (1,000 형식)
 ];
 
 /**

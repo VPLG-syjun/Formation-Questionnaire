@@ -1620,10 +1620,47 @@ export function transformSurveyToVariables(
     }
   }
 
+  // 10b. cashSum과 shareSum 계산 (모든 Founder의 합계)
+  let totalCash = 0;
+  let totalShare = 0;
+
+  for (let i = 1; i <= 9; i++) {
+    const cashKey = `Founder${i}Cash`;
+    const shareKey = `Founder${i}Share`;
+
+    if (result[cashKey]) {
+      const cashNum = parseFloat((result[cashKey] || '0').replace(/[$,]/g, ''));
+      if (!isNaN(cashNum)) {
+        totalCash += cashNum;
+      }
+    }
+
+    if (result[shareKey]) {
+      const shareNum = parseFloat((result[shareKey] || '0').replace(/,/g, ''));
+      if (!isNaN(shareNum)) {
+        totalShare += shareNum;
+      }
+    }
+  }
+
+  // cashSum: $1,000 형식
+  result['cashSum'] = '$' + formatNumberWithComma(totalCash);
+  result['CashSum'] = result['cashSum'];
+  result['CASHSUM'] = result['cashSum'];
+
+  // shareSum: 1,000 형식
+  result['shareSum'] = formatNumberWithComma(totalShare);
+  result['ShareSum'] = result['shareSum'];
+  result['SHARESUM'] = result['shareSum'];
+
+  console.log(`[transformSurveyToVariables] CashSum: ${result['cashSum']}, ShareSum: ${result['shareSum']}`);
+
   console.log('[transformSurveyToVariables] Final result (selected vars):', {
     Founder1Cash: result['Founder1Cash'],
     Founder1Share: result['Founder1Share'],
     FMV: result['FMV'],
+    cashSum: result['cashSum'],
+    shareSum: result['shareSum'],
   });
 
   // 11. Designator 변수 처리
