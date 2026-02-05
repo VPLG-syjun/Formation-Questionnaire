@@ -20,6 +20,7 @@ export default function SurveyForm() {
 
   // 모든 입력된 이름-주소-이메일 매핑을 수집하는 함수
   // currentAnswers 인수를 받아서 현재 상태를 기반으로 수집
+  // 대소문자 무시하여 이름 매칭 (키는 소문자로 저장)
   const collectPersonInfoMap = useCallback((currentAnswers?: Record<string, string | string[] | RepeatableGroupItem[]>): Map<string, PersonInfo> => {
     const answersToUse = currentAnswers || answers;
     const personMap = new Map<string, PersonInfo>();
@@ -29,9 +30,10 @@ export default function SurveyForm() {
     directors.forEach(director => {
       const name = director.name?.trim();
       if (name) {
-        const existing = personMap.get(name);
-        personMap.set(name, {
-          name,
+        const key = name.toLowerCase();  // 대소문자 무시
+        const existing = personMap.get(key);
+        personMap.set(key, {
+          name: existing?.name || name,  // 원본 이름 유지
           address: existing?.address || director.address?.trim() || undefined,
           email: existing?.email || director.email?.trim() || undefined,
         });
@@ -48,9 +50,10 @@ export default function SurveyForm() {
     officers.forEach(({ nameKey, addressKey, emailKey }) => {
       const name = (answersToUse[nameKey] as string)?.trim();
       if (name) {
-        const existing = personMap.get(name);
-        personMap.set(name, {
-          name,
+        const key = name.toLowerCase();  // 대소문자 무시
+        const existing = personMap.get(key);
+        personMap.set(key, {
+          name: existing?.name || name,  // 원본 이름 유지
           address: existing?.address || (answersToUse[addressKey] as string)?.trim() || undefined,
           email: existing?.email || (answersToUse[emailKey] as string)?.trim() || undefined,
         });
@@ -62,9 +65,10 @@ export default function SurveyForm() {
     founders.forEach(founder => {
       const name = founder.name?.trim();
       if (name) {
-        const existing = personMap.get(name);
-        personMap.set(name, {
-          name,
+        const key = name.toLowerCase();  // 대소문자 무시
+        const existing = personMap.get(key);
+        personMap.set(key, {
+          name: existing?.name || name,  // 원본 이름 유지
           address: existing?.address || founder.address?.trim() || undefined,
           email: existing?.email || founder.email?.trim() || undefined,
         });
@@ -81,8 +85,15 @@ export default function SurveyForm() {
   // Check if a question should be visible based on conditional rules
   const isQuestionVisible = (question: Question): boolean => {
     if (!question.conditionalOn) return true;
-    const { questionId, values, minGroupCount } = question.conditionalOn;
+    const { questionId, values, minGroupCount, requiresIndividualFounder } = question.conditionalOn;
     const answer = answers[questionId];
+
+    // Individual founder가 1명 이상 필요한 조건 체크
+    if (requiresIndividualFounder) {
+      const founders = answers['founders'] as RepeatableGroupItem[] || [];
+      const hasIndividual = founders.some(f => f.type !== 'corporation');
+      if (!hasIndividual) return false;
+    }
 
     // 반복 그룹의 최소 항목 수 조건 체크
     if (minGroupCount !== undefined) {
@@ -99,6 +110,56 @@ export default function SurveyForm() {
     }
 
     return true;
+  };
+
+  // 동적 드롭다운 옵션 생성 (이사, 창업자(개인), 임원 목록)
+  const getDynamicOptions = (question: Question): { value: string; label: string }[] => {
+    if (!question.dynamicOptionsSource) return [];
+
+    if (question.dynamicOptionsSource === 'directors_founders_officers') {
+      const options: { value: string; label: string }[] = [];
+      const addedNames = new Set<string>();
+
+      // 이사 목록
+      const directors = answers['directors'] as RepeatableGroupItem[] || [];
+      directors.forEach(d => {
+        const name = d.name?.trim();
+        if (name && !addedNames.has(name.toLowerCase())) {
+          addedNames.add(name.toLowerCase());
+          options.push({ value: name, label: `${name} (이사)` });
+        }
+      });
+
+      // 창업자 목록 (개인만, 법인 제외)
+      const founders = answers['founders'] as RepeatableGroupItem[] || [];
+      founders.forEach(f => {
+        if (f.type !== 'corporation') {
+          const name = f.name?.trim();
+          if (name && !addedNames.has(name.toLowerCase())) {
+            addedNames.add(name.toLowerCase());
+            options.push({ value: name, label: `${name} (주주)` });
+          }
+        }
+      });
+
+      // 임원 목록 (CEO, CFO, CS)
+      const officerFields = [
+        { id: 'ceoName', label: 'CEO' },
+        { id: 'cfoName', label: 'CFO' },
+        { id: 'csName', label: 'Corporate Secretary' },
+      ];
+      officerFields.forEach(officer => {
+        const name = (answers[officer.id] as string)?.trim();
+        if (name && !addedNames.has(name.toLowerCase())) {
+          addedNames.add(name.toLowerCase());
+          options.push({ value: name, label: `${name} (${officer.label})` });
+        }
+      });
+
+      return options;
+    }
+
+    return [];
   };
 
   // Get visible questions for current section
@@ -166,7 +227,7 @@ export default function SurveyForm() {
       // 임원 이름 필드가 변경된 경우 자동 완성 로직 실행
       if (officerFieldMapping[questionId] && typeof value === 'string' && value.trim()) {
         const personMap = collectPersonInfoMap(prev);
-        const matchedPerson = personMap.get(value.trim());
+        const matchedPerson = personMap.get(value.trim().toLowerCase());  // 대소문자 무시
         const { addressKey, emailKey } = officerFieldMapping[questionId];
 
         if (matchedPerson) {
@@ -217,7 +278,7 @@ export default function SurveyForm() {
     // name 필드가 변경된 경우 자동 완성 로직 실행
     if (fieldId === 'name' && value.trim()) {
       const personMap = collectPersonInfoMap();
-      const matchedPerson = personMap.get(value.trim());
+      const matchedPerson = personMap.get(value.trim().toLowerCase());  // 대소문자 무시
 
       if (matchedPerson) {
         // 현재 주소가 비어있고 매칭된 사람에게 주소가 있으면 자동 채움
@@ -438,21 +499,25 @@ export default function SurveyForm() {
           />
         );
 
-      case 'dropdown':
+      case 'dropdown': {
+        // 동적 옵션이 있으면 사용, 없으면 정적 옵션 사용
+        const dynamicOpts = getDynamicOptions(question);
+        const options = dynamicOpts.length > 0 ? dynamicOpts : question.options || [];
         return (
           <select
             value={value as string}
             onChange={e => handleAnswer(question.id, e.target.value)}
           >
             <option value="">선택해주세요</option>
-            {question.options?.map(option => (
+            {options.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
-                {option.price ? ` (+$${option.price.toLocaleString()})` : ''}
+                {'price' in option && option.price ? ` (+$${option.price.toLocaleString()})` : ''}
               </option>
             ))}
           </select>
         );
+      }
 
       case 'yesno':
         return (

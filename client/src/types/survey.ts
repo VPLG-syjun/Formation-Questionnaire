@@ -35,7 +35,11 @@ export interface ConditionalRule {
   questionId: string; // 의존하는 질문 ID
   values?: string[];   // 해당 값일 때만 표시
   minGroupCount?: number; // 반복 그룹의 최소 항목 수 조건
+  requiresIndividualFounder?: boolean; // founders 중 individual이 1명 이상 필요
 }
+
+// 동적 드롭다운 옵션 소스
+export type DynamicOptionsSource = 'directors_founders_officers';
 
 // 질문 정의
 export interface Question {
@@ -46,6 +50,7 @@ export interface Question {
   placeholder?: string;
   required: boolean;
   options?: QuestionOption[]; // dropdown, radio, checkbox용
+  dynamicOptionsSource?: DynamicOptionsSource; // 동적 드롭다운 옵션 소스
   conditionalOn?: ConditionalRule; // 조건부 표시
   priceEffect?: {             // 가격에 영향
     type: 'fixed' | 'perAnswer';

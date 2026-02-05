@@ -440,6 +440,10 @@ export const questionSections: QuestionSection[] = [
         type: 'yesno',
         text: '창업자들 중 일부 또는 전부에게 회사의 지분이 Vesting 되도록 할 것인가요?',
         required: true,
+        conditionalOn: {
+          questionId: 'founders',
+          requiresIndividualFounder: true,
+        },
         documentField: 'RS',
       },
       {
@@ -471,16 +475,18 @@ export const questionSections: QuestionSection[] = [
     questions: [
       {
         id: 'bankConsent',
-        type: 'text',
-        text: '회사 계좌를 개설할 이사/임원의 영문 성명을 기재해주세요.',
+        type: 'dropdown',
+        text: '회사 계좌를 개설할 이사/임원을 선택해주세요.',
         required: true,
+        dynamicOptionsSource: 'directors_founders_officers',
         documentField: 'BankConsent',
       },
       {
         id: 'bankConsent2',
-        type: 'text',
-        text: '회사 계좌의 은행 권한을 수여 받을 이사/임원의 이름/성명을 기재해주세요.',
+        type: 'dropdown',
+        text: '회사 계좌의 은행 권한을 수여 받을 이사/임원을 선택해주세요.',
         required: true,
+        dynamicOptionsSource: 'directors_founders_officers',
         documentField: 'BankConsent2',
       },
     ],

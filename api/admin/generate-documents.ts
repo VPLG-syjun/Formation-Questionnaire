@@ -639,16 +639,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 3h. repeatForPersons 처리 - 인원별 문서 생성
         const selectedPersonIndices = repeatForSelections[templateId];
+        const personTypeFilter = template.personTypeFilter as 'all' | 'individual' | 'corporation' | undefined;
 
         if (repeatForPersons && selectedPersonIndices && selectedPersonIndices.length > 0) {
           // 모든 인원 추출
           const allPersons = extractAllPersons(responses);
-          console.log(`[DEBUG] Template ${templateId} - repeatForPersons: true, selected: ${selectedPersonIndices.join(',')}, allPersons: ${allPersons.length}`);
+          console.log(`[DEBUG] Template ${templateId} - repeatForPersons: true, personTypeFilter: ${personTypeFilter || 'all'}, selected: ${selectedPersonIndices.join(',')}, allPersons: ${allPersons.length}`);
 
           for (const personIndex of selectedPersonIndices) {
             const person = allPersons[personIndex];
             if (!person) {
               console.warn(`[WARN] Person at index ${personIndex} not found for template ${templateId}`);
+              continue;
+            }
+
+            // personTypeFilter에 따라 해당 인원을 건너뛰기
+            if (personTypeFilter === 'individual' && person.type === 'corporation') {
+              console.log(`[DEBUG] Skipping corporation ${person.name} for individual-only template ${templateId}`);
+              continue;
+            }
+            if (personTypeFilter === 'corporation' && person.type !== 'corporation') {
+              console.log(`[DEBUG] Skipping individual ${person.name} for corporation-only template ${templateId}`);
               continue;
             }
 

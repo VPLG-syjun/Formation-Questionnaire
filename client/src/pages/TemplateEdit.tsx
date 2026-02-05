@@ -130,6 +130,7 @@ export default function TemplateEdit() {
     displayName: '',
     category: '법인설립',
     repeatForPersons: false,  // 인원별 반복 생성 여부
+    personTypeFilter: 'all' as 'all' | 'individual' | 'corporation',  // 인원 필터
   });
 
   // 변수 매핑
@@ -170,6 +171,7 @@ export default function TemplateEdit() {
         displayName: templateData.displayName,
         category: templateData.category,
         repeatForPersons: templateData.repeatForPersons || false,
+        personTypeFilter: templateData.personTypeFilter || 'all',
       });
 
       // 변수 매핑 조회 (대소문자 중복 제거)
@@ -599,10 +601,23 @@ export default function TemplateEdit() {
             fontSize: '0.85rem',
             color: 'var(--color-info-dark, #004499)',
           }}>
-            <strong>인원별 반복 생성 활성화됨:</strong> 문서 생성 시 설문에 등장한 모든 인원(주주, 이사, CEO, CFO, Corporate Secretary 등) 중 선택한 인원 각각에 대해 개별 문서가 생성됩니다.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <strong>인원별 반복 생성 활성화됨</strong>
+              <select
+                value={formData.personTypeFilter}
+                onChange={(e) => setFormData({ ...formData, personTypeFilter: e.target.value as 'all' | 'individual' | 'corporation' })}
+                style={{ padding: '4px 8px', fontSize: '0.85rem' }}
+              >
+                <option value="all">모든 인원</option>
+                <option value="individual">개인(Individual) 주주만</option>
+                <option value="corporation">법인(Corporation) 주주만</option>
+              </select>
+            </div>
+            문서 생성 시 설문에 등장한 {formData.personTypeFilter === 'all' ? '모든 인원' : formData.personTypeFilter === 'individual' ? '개인 주주' : '법인 주주'}(주주, 이사, CEO, CFO, Corporate Secretary 등) 중 선택한 인원 각각에 대해 개별 문서가 생성됩니다.
             <br />
             <span style={{ fontSize: '0.8rem', marginTop: '4px', display: 'block' }}>
               템플릿에서 사용할 변수: {'{PersonName}'}, {'{PersonAddress}'}, {'{PersonEmail}'}, {'{PersonRoles}'}
+              {formData.personTypeFilter === 'corporation' && ', {PersonCeoName}'}
             </span>
           </div>
         )}

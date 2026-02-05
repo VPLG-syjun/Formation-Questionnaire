@@ -48,7 +48,7 @@ const NAME_BASED_AUTO_VARIABLES = [
   'currentYear', 'CurrentYear', 'CURRENTYEAR',
   'documentNumber', 'DocumentNumber',
   'COIDate', 'COIDateShort', 'COIDateISO', 'COIDateKR',
-  'SIGNDate', 'SIGNDateShort', 'SIGNDateISO', 'SIGNDateKR',
+  'SIGNDate', 'signDate', 'SignDate', 'SIGNDateShort', 'SIGNDateISO', 'SIGNDateKR',
   'SIGNYear', 'signYear', 'SIGNYEAR',
   // Cashin 및 SHSIGNDate (cashin 월의 마지막 영업일)
   'cashin', 'Cashin', 'cashinShort', 'cashinISO',
@@ -111,6 +111,7 @@ const NAME_BASED_AUTO_VARIABLES = [
   'authorizedSharesEnglish', 'AuthorizedSharesEnglish',
   'parValue', 'ParValue',
   'parValueDollar', 'ParValueDollar',
+  'PV', 'pv',
   'fairMarketValue', 'FairMarketValue',
   'fairMarketValueDollar', 'FairMarketValueDollar',
   'FMV', 'fmv',

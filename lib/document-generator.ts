@@ -58,6 +58,7 @@ export interface Template {
   variables?: VariableMapping[];
   isActive: boolean;
   repeatForPersons?: boolean;  // 인원별 반복 생성 여부
+  personTypeFilter?: 'all' | 'individual' | 'corporation';  // 인원별 생성 시 필터 (individual/corporation founder만)
 }
 
 export interface TemplateSelection {
@@ -343,7 +344,7 @@ const MONTH_NAMES_SHORT = [
  * - 'YYYY-MM-DD' → 2026-01-31
  * - 'YYYY년 MM월 DD일' → 2026년 01월 31일
  * - 'MM/DD/YYYY' → 01/31/2026
- * - 'MMMM D, YYYY' → January 31, 2026
+ * - 'MMM D, YYYY' → Jan 31, 2026
  * - 'YYYY.MM.DD' → 2026.01.31
  */
 export function formatDate(value: string | Date | undefined, format: string = 'YYYY-MM-DD'): string {
@@ -368,9 +369,6 @@ export function formatDate(value: string | Date | undefined, format: string = 'Y
 
     case 'MM/DD/YYYY':
       return `${pad(month)}/${pad(day)}/${year}`;
-
-    case 'MMMM D, YYYY':
-      return `${MONTH_NAMES_EN[month - 1]} ${day}, ${year}`;
 
     case 'MMM D, YYYY':
       return `${MONTH_NAMES_SHORT[month - 1]} ${day}, ${year}`;
@@ -501,13 +499,24 @@ export function toTitleCase(text: string | undefined): string {
 }
 
 /**
- * Capitalize 변환 (회사명, 법인명에 사용 - 첫 글자만 대문자)
- * @example capitalize('acme corporation') → 'Acme corporation'
- * @example capitalize('ACME') → 'Acme'
+ * Capitalize 변환 (회사명, 법인명에 사용 - 각 단어 첫 글자 대문자, 나머지 유지)
+ * @example capitalize('acme corporation') → 'Acme Corporation'
+ * @example capitalize('quantum capital') → 'Quantum Capital'
+ * @example capitalize('tech ventures LLC') → 'Tech Ventures LLC'
  */
 export function capitalize(text: string | undefined): string {
   if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return text
+    .split(' ')
+    .map(word => {
+      if (!word) return '';
+      // 모두 대문자인 단어(약어)는 유지 (LLC, INC, CO 등)
+      if (word === word.toUpperCase() && word.length <= 4) {
+        return word;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
 }
 
 /**
@@ -536,7 +545,7 @@ export function transformText(text: string | undefined, rule: string): string {
       return text.toLowerCase();
 
     case 'capitalize':
-      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+      return capitalize(text);
 
     case 'title':
       return toTitleCase(text);
@@ -1011,7 +1020,7 @@ export function transformSurveyToVariables(
   const result: Record<string, string> = {};
 
   // 1. 특수 변수 자동 생성 (영문 템플릿용)
-  result['currentDate'] = getCurrentDate('MMMM D, YYYY');
+  result['currentDate'] = getCurrentDate('MMM D, YYYY');
   result['currentDateShort'] = getCurrentDate('MM/DD/YYYY');
   result['currentDateISO'] = getCurrentDate('YYYY-MM-DD');
   result['currentTime'] = getCurrentTime('h:mm A');
@@ -1031,12 +1040,12 @@ export function transformSurveyToVariables(
         ? String(rawValue[0])
         : new Date().toISOString();
 
-    result['COIDate'] = formatDate(coiDateValue, 'MMMM D, YYYY');
+    result['COIDate'] = formatDate(coiDateValue, 'MMM D, YYYY');
     result['COIDateShort'] = formatDate(coiDateValue, 'MM/DD/YYYY');
     result['COIDateISO'] = formatDate(coiDateValue, 'YYYY-MM-DD');
     result['COIDateKR'] = formatDate(coiDateValue, 'YYYY년 MM월 DD일');
   } else {
-    result['COIDate'] = getCurrentDate('MMMM D, YYYY');
+    result['COIDate'] = getCurrentDate('MMM D, YYYY');
     result['COIDateShort'] = getCurrentDate('MM/DD/YYYY');
     result['COIDateISO'] = getCurrentDate('YYYY-MM-DD');
     result['COIDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
@@ -1051,13 +1060,17 @@ export function transformSurveyToVariables(
         ? String(rawValue[0])
         : new Date().toISOString();
 
-    result['SIGNDate'] = formatDate(signDateValue, 'MMMM D, YYYY');
+    result['SIGNDate'] = formatDate(signDateValue, 'MMM D, YYYY');
+    result['signDate'] = result['SIGNDate'];
+    result['SignDate'] = result['SIGNDate'];
     result['SIGNDateShort'] = formatDate(signDateValue, 'MM/DD/YYYY');
     result['SIGNDateISO'] = formatDate(signDateValue, 'YYYY-MM-DD');
     result['SIGNDateKR'] = formatDate(signDateValue, 'YYYY년 MM월 DD일');
     result['SIGNYear'] = formatDate(signDateValue, 'YYYY');
   } else {
-    result['SIGNDate'] = getCurrentDate('MMMM D, YYYY');
+    result['SIGNDate'] = getCurrentDate('MMM D, YYYY');
+    result['signDate'] = result['SIGNDate'];
+    result['SignDate'] = result['SIGNDate'];
     result['SIGNDateShort'] = getCurrentDate('MM/DD/YYYY');
     result['SIGNDateISO'] = getCurrentDate('YYYY-MM-DD');
     result['SIGNDateKR'] = getCurrentDate('YYYY년 MM월 DD일');
@@ -1076,7 +1089,7 @@ export function transformSurveyToVariables(
 
     if (cashinValue) {
       // cashin 날짜 저장
-      result['cashin'] = formatDate(cashinValue, 'MMMM D, YYYY');
+      result['cashin'] = formatDate(cashinValue, 'MMM D, YYYY');
       result['Cashin'] = result['cashin'];
       result['cashinShort'] = formatDate(cashinValue, 'MM/DD/YYYY');
       result['cashinISO'] = formatDate(cashinValue, 'YYYY-MM-DD');
@@ -1122,7 +1135,7 @@ export function transformSurveyToVariables(
             lastDayOfMonth.setDate(lastDayOfMonth.getDate() - 1);
           }
 
-          result['SHSIGNDate'] = formatDate(lastDayOfMonth.toISOString(), 'MMMM D, YYYY');
+          result['SHSIGNDate'] = formatDate(lastDayOfMonth.toISOString(), 'MMM D, YYYY');
           result['SHSIGNDateShort'] = formatDate(lastDayOfMonth.toISOString(), 'MM/DD/YYYY');
           result['SHSIGNDateISO'] = formatDate(lastDayOfMonth.toISOString(), 'YYYY-MM-DD');
           console.log(`[transformSurveyToVariables] Cashin: ${cashinValue}, SHSIGNDate: ${result['SHSIGNDate']}`);
@@ -1467,6 +1480,7 @@ export function transformSurveyToVariables(
 
     result['parValue'] = parVal;
     result['parValueDollar'] = '$' + parVal;
+    result['PV'] = '$' + parVal;
   }
 
   const fmvResponse = responses.find(r => r.questionId === '__fairMarketValue');
@@ -1493,9 +1507,20 @@ export function transformSurveyToVariables(
       const titleCaseName = toTitleCase(response.value.trim());
       // 다양한 변수명 버전 지원
       result[fieldId] = titleCaseName;
-      // 대문자 시작 버전 (CEOName, CFOName 등)
+      // 대문자 시작 버전 (CeoName, CfoName 등)
       const capitalizedKey = fieldId.charAt(0).toUpperCase() + fieldId.slice(1);
       result[capitalizedKey] = titleCaseName;
+      // 대문자 약어 버전 (CEOName, CFOName, CSName)
+      if (fieldId === 'ceoName') {
+        result['CEOName'] = titleCaseName;
+        result['CEONAME'] = titleCaseName;
+      } else if (fieldId === 'cfoName') {
+        result['CFOName'] = titleCaseName;
+        result['CFONAME'] = titleCaseName;
+      } else if (fieldId === 'csName') {
+        result['CSName'] = titleCaseName;
+        result['CSNAME'] = titleCaseName;
+      }
     }
   }
 
@@ -2006,7 +2031,15 @@ export function transformSurveyToVariables(
     console.log(`[transformSurveyToVariables] StockOption: ${stockOptionValue}, hasStockOption: ${hasStockOption}`);
   }
 
-  // 13. 대소문자 구분 없는 변수 처리 - 모든 변수에 대해 다양한 케이스 버전 생성
+  // 13. 계산된 변수 추가 (hasIndividualFounder, hasCorporationFounder 등)
+  const computedVars = computeVariablesFromResponses(responses);
+  for (const [key, value] of Object.entries(computedVars)) {
+    if (result[key] === undefined) {
+      result[key] = String(value);
+    }
+  }
+
+  // 14. 대소문자 구분 없는 변수 처리 - 모든 변수에 대해 다양한 케이스 버전 생성
   const caseInsensitiveResult = createCaseVariations(result);
 
   return caseInsensitiveResult;
