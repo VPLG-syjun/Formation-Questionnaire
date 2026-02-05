@@ -490,6 +490,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (survey.adminDates.SIGNDate) {
         responsesMap.set('__SIGNDate', { questionId: '__SIGNDate', value: survey.adminDates.SIGNDate });
       }
+      if (survey.adminDates.cashin) {
+        responsesMap.set('__cashin', { questionId: '__cashin', value: survey.adminDates.cashin });
+      }
     }
 
     // 4. 관리자가 설정한 값 추가 (덮어씀)

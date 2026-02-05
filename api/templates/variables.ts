@@ -49,6 +49,9 @@ const NAME_BASED_AUTO_VARIABLES = [
   'COIDate', 'COIDateShort', 'COIDateISO', 'COIDateKR',
   'SIGNDate', 'SIGNDateShort', 'SIGNDateISO', 'SIGNDateKR',
   'SIGNYear', 'signYear', 'SIGNYEAR',
+  // Cashin 및 SHSIGNDate (cashin 월의 마지막 영업일)
+  'cashin', 'Cashin', 'cashinShort', 'cashinISO',
+  'SHSIGNDate', 'SHSIGNDateShort', 'SHSIGNDateISO',
 
   // Officer 이름 변수 (설문 응답에서 자동 생성)
   'ceoName', 'CeoName', 'CEOName', 'CEONAME',

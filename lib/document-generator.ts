@@ -1064,6 +1064,39 @@ export function transformSurveyToVariables(
     result['SIGNYear'] = getCurrentDate('YYYY');
   }
 
+  // 3b. Cashin 날짜 및 SHSIGNDate (cashin 날짜가 속한 달의 마지막 영업일) 처리
+  const cashinResponse = responses.find(r => r.questionId === '__cashin');
+  if (cashinResponse?.value) {
+    const rawValue = cashinResponse.value;
+    const cashinValue: string = typeof rawValue === 'string'
+      ? rawValue
+      : Array.isArray(rawValue) && rawValue.length > 0
+        ? String(rawValue[0])
+        : '';
+
+    if (cashinValue) {
+      // cashin 날짜 저장
+      result['cashin'] = formatDate(cashinValue, 'MMMM D, YYYY');
+      result['Cashin'] = result['cashin'];
+      result['cashinShort'] = formatDate(cashinValue, 'MM/DD/YYYY');
+      result['cashinISO'] = formatDate(cashinValue, 'YYYY-MM-DD');
+
+      // SHSIGNDate: cashin 날짜가 속한 달의 마지막 영업일 계산
+      const cashinDate = new Date(cashinValue);
+      // 해당 월의 마지막 날
+      const lastDayOfMonth = new Date(cashinDate.getFullYear(), cashinDate.getMonth() + 1, 0);
+      // 마지막 영업일 계산 (토요일=6, 일요일=0 제외)
+      while (lastDayOfMonth.getDay() === 0 || lastDayOfMonth.getDay() === 6) {
+        lastDayOfMonth.setDate(lastDayOfMonth.getDate() - 1);
+      }
+
+      result['SHSIGNDate'] = formatDate(lastDayOfMonth.toISOString(), 'MMMM D, YYYY');
+      result['SHSIGNDateShort'] = formatDate(lastDayOfMonth.toISOString(), 'MM/DD/YYYY');
+      result['SHSIGNDateISO'] = formatDate(lastDayOfMonth.toISOString(), 'YYYY-MM-DD');
+      console.log(`[transformSurveyToVariables] Cashin: ${cashinValue}, SHSIGNDate: ${result['SHSIGNDate']}`);
+    }
+  }
+
   // 4. 회사 주소 처리 (미국 주소 우선, 없으면 한국 주소)
   const hasUSAddressResponse = responses.find(r => r.questionId === 'hasUSAddress');
   const usAddressResponse = responses.find(r => r.questionId === 'usAddress');

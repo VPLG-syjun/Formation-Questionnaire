@@ -88,6 +88,7 @@ export interface SurveyAnswer {
 export interface AdminDates {
   COIDate?: string;   // Certificate of Incorporation 날짜
   SIGNDate?: string;  // 서명 날짜
+  cashin?: string;    // Cash-in 날짜 (SHSIGNDate 계산에 사용)
 }
 
 // 관리자가 설정하는 값 변수
