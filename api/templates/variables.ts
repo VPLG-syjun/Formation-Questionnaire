@@ -82,9 +82,14 @@ const NAME_BASED_AUTO_VARIABLES = [
   'FounderEmail', 'founderEmail',
   'FounderCash', 'founderCash',
   'FounderShare', 'founderShare',  // Founder용 PersonShare
+  'FounderCeoName', 'founderCeoName', 'FounderCEOName',  // 법인 Founder CEO 이름
   'DirectorName', 'directorName',
   'DirectorAddress', 'directorAddress',
   'DirectorEmail', 'directorEmail',
+
+  // 반복 그룹 배열 변수 (docxtemplater 루프용)
+  'founders', 'Founders', 'FOUNDERS',
+  'directors', 'Directors', 'DIRECTORS',
 
   // 주식 관련 자동 생성 변수
   'authorizedShares', 'AuthorizedShares',
