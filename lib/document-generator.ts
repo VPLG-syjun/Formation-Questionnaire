@@ -1688,6 +1688,29 @@ export function transformSurveyToVariables(
 
   console.log(`[transformSurveyToVariables] CashSum: ${result['cashSum']}, ShareSum: ${result['shareSum']}`);
 
+  // 10c. founders 배열에 share 필드 추가 (docxtemplater 루프용)
+  const foundersArray = (result as Record<string, unknown>)['founders'] as Array<Record<string, unknown>> | undefined;
+  if (foundersArray && result['FMV']) {
+    const fmvNum = parseFloat((result['FMV'] || '0').replace(/[$,]/g, ''));
+    if (fmvNum > 0) {
+      foundersArray.forEach((founder, idx) => {
+        const cashVal = founder['cash'];
+        if (cashVal) {
+          const cashNum = parseFloat(String(cashVal).replace(/[$,]/g, ''));
+          if (!isNaN(cashNum) && cashNum > 0) {
+            const shareCount = Math.floor(cashNum / fmvNum);
+            founder['share'] = formatNumberWithComma(shareCount);
+            console.log(`[transformSurveyToVariables] Added share to founders[${idx}]: ${founder['share']}`);
+          } else {
+            founder['share'] = '0';
+          }
+        } else {
+          founder['share'] = '0';
+        }
+      });
+    }
+  }
+
   console.log('[transformSurveyToVariables] Final result (selected vars):', {
     Founder1Cash: result['Founder1Cash'],
     Founder1Share: result['Founder1Share'],

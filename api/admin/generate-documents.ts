@@ -574,6 +574,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 3g. 필수 변수 검증
         // repeatForPersons 템플릿의 경우 Person* 변수는 나중에 생성되므로 검증에서 제외
+        // 루프 컨텍스트 변수 (name, cash, share 등)도 제외 (루프 내부에서만 유효)
         const PERSON_AUTO_VARIABLES = [
           'PersonName', 'personName', 'PersonAddress', 'personAddress',
           'PersonEmail', 'personEmail', 'PersonRoles', 'personRoles',
@@ -584,9 +585,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'DirectorAddress', 'directorAddress', 'DirectorEmail', 'directorEmail',
         ];
 
+        // 루프 컨텍스트 필드 (docxtemplater 루프 내부에서만 사용)
+        const LOOP_CONTEXT_FIELDS = [
+          'name', 'Name', 'NAME',
+          'address', 'Address', 'ADDRESS',
+          'email', 'Email', 'EMAIL',
+          'type', 'Type', 'TYPE',
+          'cash', 'Cash', 'CASH',
+          'share', 'Share', 'SHARE',
+          'ceoName', 'CeoName', 'ceoname',
+          'index', 'isFirst', 'isLast',
+        ];
+
         const mappingsToValidate = repeatForPersons
           ? variableMappings.filter(m => !PERSON_AUTO_VARIABLES.includes(m.variableName))
-          : variableMappings;
+          : variableMappings.filter(m => !LOOP_CONTEXT_FIELDS.includes(m.variableName));
 
         const validation = validateVariables(variables, mappingsToValidate);
 
