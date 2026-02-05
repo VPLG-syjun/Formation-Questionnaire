@@ -503,6 +503,22 @@ export const questionSections: QuestionSection[] = [
         documentField: 'StockOption',
       },
       {
+        id: 'optionPool',
+        type: 'number',
+        text: '창립 발행 주식 중 몇%를 Option Pool로 설정할까요?',
+        description: '10-15% Recommended',
+        required: true,
+        conditionalOn: {
+          questionId: 'stockOption',
+          values: ['yes'],
+        },
+        validation: {
+          min: 1,
+          max: 100,
+        },
+        documentField: 'OptionPool',
+      },
+      {
         id: 'expeditedProcessing',
         type: 'yesno',
         text: '급행 처리(Expedited Processing)를 원하시나요?',

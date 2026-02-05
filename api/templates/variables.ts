@@ -121,6 +121,7 @@ const NAME_BASED_AUTO_VARIABLES = [
   // 조건부 변수 (yes/no 질문에서 자동 생성)
   'hasStockOption', 'HasStockOption',  // stockOption == "yes"인 경우 true
   'stockOption', 'StockOption',
+  'optionPool', 'OptionPool',  // Option Pool 비율 (%)
 ];
 
 // 대소문자 무시를 위한 소문자 목록
