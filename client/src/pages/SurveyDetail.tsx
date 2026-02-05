@@ -834,7 +834,10 @@ export default function SurveyDetail() {
                   {' → SHSIGNDate: '}
                   {(() => {
                     const date = new Date(cashinDate);
-                    const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                    const dayOfMonth = date.getDate();
+                    // 15일 이전이면 같은 달, 15일 이후면 다음 달
+                    const targetMonth = dayOfMonth < 15 ? date.getMonth() : date.getMonth() + 1;
+                    const lastDay = new Date(date.getFullYear(), targetMonth + 1, 0);
                     // 마지막 영업일 계산 (토/일 제외)
                     while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
                       lastDay.setDate(lastDay.getDate() - 1);

@@ -1081,10 +1081,20 @@ export function transformSurveyToVariables(
       result['cashinShort'] = formatDate(cashinValue, 'MM/DD/YYYY');
       result['cashinISO'] = formatDate(cashinValue, 'YYYY-MM-DD');
 
-      // SHSIGNDate: cashin 날짜가 속한 달의 마지막 영업일 계산
+      // SHSIGNDate 계산:
+      // - cashin 날짜가 15일 이전(1-14일): 같은 달의 마지막 영업일
+      // - cashin 날짜가 15일 이후(15-31일): 다음 달의 마지막 영업일
       const cashinDate = new Date(cashinValue);
-      // 해당 월의 마지막 날
-      const lastDayOfMonth = new Date(cashinDate.getFullYear(), cashinDate.getMonth() + 1, 0);
+      const dayOfMonth = cashinDate.getDate();
+
+      // 대상 월 결정 (15일 이전이면 같은 달, 15일 이후면 다음 달)
+      const targetMonth = dayOfMonth < 15
+        ? cashinDate.getMonth()
+        : cashinDate.getMonth() + 1;
+      const targetYear = cashinDate.getFullYear();
+
+      // 대상 월의 마지막 날 (다음 달 0일 = 이번 달 마지막 날)
+      const lastDayOfMonth = new Date(targetYear, targetMonth + 1, 0);
       // 마지막 영업일 계산 (토요일=6, 일요일=0 제외)
       while (lastDayOfMonth.getDay() === 0 || lastDayOfMonth.getDay() === 6) {
         lastDayOfMonth.setDate(lastDayOfMonth.getDate() - 1);
