@@ -1906,7 +1906,34 @@ export function transformSurveyToVariables(
 
   console.log(`[transformSurveyToVariables] CashSum: ${result['cashSum']}, ShareSum: ${result['shareSum']}`);
 
-  // 10c. founders 배열에 share 필드 추가 (docxtemplater 루프용)
+  // 10c. Option Pool 주식 수 계산
+  // 공식: x = p × (S + x) → x = pS / (1 - p)
+  // p = optionPool% / 100, S = totalShare (founder 전체 주식 수)
+  const optionPoolResponse = responses.find(r => r.questionId === 'optionPool');
+  if (optionPoolResponse?.value && totalShare > 0) {
+    const optionPoolPercent = typeof optionPoolResponse.value === 'string'
+      ? parseFloat(optionPoolResponse.value)
+      : 0;
+
+    if (optionPoolPercent > 0 && optionPoolPercent < 100) {
+      const p = optionPoolPercent / 100;
+      const optionPoolShares = Math.round((p * totalShare) / (1 - p));
+
+      result['optionPoolShares'] = formatNumberWithComma(optionPoolShares);
+      result['OptionPoolShares'] = result['optionPoolShares'];
+      result['optionPoolSharesRaw'] = optionPoolShares.toString();
+      result['OptionPoolSharesRaw'] = result['optionPoolSharesRaw'];
+
+      // 총 발행 주식 수 (founder shares + option pool)
+      const totalIssuedShares = totalShare + optionPoolShares;
+      result['totalIssuedShares'] = formatNumberWithComma(totalIssuedShares);
+      result['TotalIssuedShares'] = result['totalIssuedShares'];
+
+      console.log(`[transformSurveyToVariables] OptionPool: ${optionPoolPercent}%, OptionPoolShares: ${optionPoolShares}, TotalIssued: ${totalIssuedShares}`);
+    }
+  }
+
+  // 10d. founders 배열에 share 필드 추가 (docxtemplater 루프용)
   const foundersArray = (result as Record<string, unknown>)['founders'] as Array<Record<string, unknown>> | undefined;
   if (foundersArray && result['FMV']) {
     const fmvNum = parseFloat((result['FMV'] || '0').replace(/[$,]/g, ''));

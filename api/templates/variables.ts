@@ -122,6 +122,9 @@ const NAME_BASED_AUTO_VARIABLES = [
   'hasStockOption', 'HasStockOption',  // stockOption == "yes"인 경우 true
   'stockOption', 'StockOption',
   'optionPool', 'OptionPool',  // Option Pool 비율 (%)
+  'optionPoolShares', 'OptionPoolShares',  // Option Pool 주식 수
+  'optionPoolSharesRaw', 'OptionPoolSharesRaw',  // Option Pool 주식 수 (원본)
+  'totalIssuedShares', 'TotalIssuedShares',  // 총 발행 주식 수 (founder + option pool)
 ];
 
 // 대소문자 무시를 위한 소문자 목록
