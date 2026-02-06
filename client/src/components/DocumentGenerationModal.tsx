@@ -110,7 +110,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
       allTemplates.forEach(template => {
         if (template.repeatForPersons) {
           // personTypeFilter에 따라 필터링된 인원만 기본 선택
-          const personTypeFilter = (template as any).personTypeFilter as string | undefined;
+          const personTypeFilter = template.personTypeFilter;
           const filteredIndices: number[] = [];
 
           persons.forEach((person, idx) => {
@@ -676,7 +676,7 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
 
                     {repeatTemplates.map(template => {
                       const selectedPersonIndices = repeatForSelections[template.id] || [];
-                      const personTypeFilter = (template as any).personTypeFilter as string | undefined;
+                      const personTypeFilter = template.personTypeFilter;
 
                       // personTypeFilter에 따라 인원 필터링
                       const filteredPersonsWithIndex = allPersons
@@ -691,12 +691,14 @@ export default function DocumentGenerationModal({ isOpen, onClose, surveyId, onC
                           return true;
                         });
 
-                      const filterDescription = {
+                      const filterDescriptions: Record<string, string> = {
+                        'all': '',
                         'individual': '(개인 주주 + 이사 + 임원)',
                         'individual_founder': '(개인 주주만)',
                         'corporation_founder': '(법인 주주만)',
                         'corporation': '(법인만)',
-                      }[personTypeFilter || ''] || '';
+                      };
+                      const filterDescription = filterDescriptions[personTypeFilter || 'all'] || '';
 
                       return (
                         <div key={template.id} style={{

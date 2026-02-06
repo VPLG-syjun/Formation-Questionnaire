@@ -141,6 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         rules,
         isActive: t.isActive,
         repeatForPersons: t.repeatForPersons || false,  // 인원별 반복 생성 설정
+        personTypeFilter: t.personTypeFilter || 'all',  // 인원 필터 (individual_founder, corporation_founder 등)
       };
     });
 
