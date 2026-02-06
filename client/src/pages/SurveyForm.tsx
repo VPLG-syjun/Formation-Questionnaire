@@ -17,6 +17,7 @@ export default function SurveyForm() {
   const [answers, setAnswers] = useState<Record<string, string | string[] | RepeatableGroupItem[]>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPriceExpanded, setIsPriceExpanded] = useState(false);
 
   // 모든 입력된 이름-주소-이메일 매핑을 수집하는 함수
   // currentAnswers 인수를 받아서 현재 상태를 기반으로 수집
@@ -747,31 +748,49 @@ export default function SurveyForm() {
 
       {/* Price Sidebar */}
       <aside className="price-sidebar">
-        <div className="price-card">
+        <div className={`price-card ${isPriceExpanded ? 'expanded' : ''}`}>
+          {/* 데스크탑용 (항상 표시) */}
           <p className="price-card-title">예상 서비스 비용</p>
           <p className="price-total">
             <span className="currency">$</span>
             {priceBreakdown.total.toLocaleString()}
           </p>
 
-          <div className="price-breakdown">
-            <div className="price-item base">
-              <span className="price-item-label">기본 서비스</span>
-              <span className="price-item-value">{formatPrice(BASE_PRICE)}</span>
+          {/* 모바일용 접힌 헤더 */}
+          <div
+            className="price-card-collapsed"
+            onClick={() => setIsPriceExpanded(!isPriceExpanded)}
+          >
+            <div>
+              <span className="price-label">예상 비용</span>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span className="price-amount">${priceBreakdown.total.toLocaleString()}</span>
+              <span className="expand-icon">{isPriceExpanded ? '▼' : '▲'}</span>
+            </div>
+          </div>
 
-            {priceBreakdown.breakdown.map((item, index) => (
-              <div key={index} className="price-item">
-                <span className="price-item-label">{item.label}</span>
-                <span className="price-item-value">+{formatPrice(item.amount)}</span>
+          {/* 모바일 확장 콘텐츠 */}
+          <div className="price-card-expanded">
+            <div className="price-breakdown">
+              <div className="price-item base">
+                <span className="price-item-label">기본 서비스</span>
+                <span className="price-item-value">{formatPrice(BASE_PRICE)}</span>
               </div>
-            ))}
 
-            {priceBreakdown.breakdown.length === 0 && (
-              <p style={{ opacity: 0.7, fontSize: '0.85rem', textAlign: 'center', padding: '8px 0' }}>
-                추가 옵션을 선택하면<br />여기에 표시됩니다
-              </p>
-            )}
+              {priceBreakdown.breakdown.map((item, index) => (
+                <div key={index} className="price-item">
+                  <span className="price-item-label">{item.label}</span>
+                  <span className="price-item-value">+{formatPrice(item.amount)}</span>
+                </div>
+              ))}
+
+              {priceBreakdown.breakdown.length === 0 && (
+                <p style={{ opacity: 0.6, fontSize: '0.8rem', textAlign: 'center', padding: '8px 0' }}>
+                  추가 옵션을 선택하면<br />여기에 표시됩니다
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </aside>
