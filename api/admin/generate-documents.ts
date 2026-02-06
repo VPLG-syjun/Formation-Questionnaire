@@ -639,7 +639,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 3h. repeatForPersons 처리 - 인원별 문서 생성
         const selectedPersonIndices = repeatForSelections[templateId];
-        const personTypeFilter = template.personTypeFilter as 'all' | 'individual' | 'corporation' | undefined;
+        const personTypeFilter = template.personTypeFilter as 'all' | 'individual' | 'corporation' | 'individual_founder' | 'corporation_founder' | undefined;
 
         if (repeatForPersons && selectedPersonIndices && selectedPersonIndices.length > 0) {
           // 모든 인원 추출
