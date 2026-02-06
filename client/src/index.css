@@ -146,7 +146,7 @@ main.container {
 @media (max-width: 960px) {
   .survey-layout {
     grid-template-columns: 1fr;
-    padding-bottom: 44px;
+    padding-bottom: 36px;
   }
 
   .price-sidebar {
@@ -158,22 +158,26 @@ main.container {
   }
 
   .price-card {
-    border-radius: 0 !important;
+    border-radius: 0;
     padding: 0;
     box-shadow: none;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.85);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.9);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+  }
+
+  .price-card.expanded {
+    border-radius: 12px 12px 0 0;
   }
 
   .price-card-collapsed {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
+    padding: 8px 16px;
     cursor: pointer;
-    min-height: 44px;
+    height: 36px;
     box-sizing: border-box;
   }
 
@@ -188,12 +192,12 @@ main.container {
   }
 
   .price-card-collapsed .price-amount {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
   }
 
   .price-card-collapsed .expand-icon {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     opacity: 0.4;
     transition: transform 0.3s ease;
     margin-left: 8px;
