@@ -146,7 +146,7 @@ main.container {
 @media (max-width: 960px) {
   .survey-layout {
     grid-template-columns: 1fr;
-    padding-bottom: 80px;
+    padding-bottom: 52px;
   }
 
   .price-sidebar {
@@ -158,43 +158,50 @@ main.container {
   }
 
   .price-card {
-    border-radius: 20px 20px 0 0;
+    border-radius: 0;
     padding: 0;
-    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.1);
+    background: rgba(29, 29, 31, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .price-card-collapsed {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 20px;
+    padding: 12px 16px;
     cursor: pointer;
     transition: background 0.2s;
   }
 
   .price-card-collapsed:active {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .price-card-collapsed .price-label {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     font-weight: 500;
-    opacity: 0.9;
+    opacity: 0.7;
   }
 
   .price-card-collapsed .price-amount {
-    font-size: 1.25rem;
-    font-weight: 700;
+    font-size: 1rem;
+    font-weight: 600;
   }
 
   .price-card-collapsed .expand-icon {
-    font-size: 1.2rem;
-    opacity: 0.7;
+    font-size: 0.8rem;
+    opacity: 0.5;
     transition: transform 0.3s ease;
   }
 
   .price-card.expanded .expand-icon {
     transform: rotate(180deg);
+  }
+
+  .price-card.expanded {
+    border-radius: 16px 16px 0 0;
   }
 
   .price-card-expanded {
@@ -205,7 +212,7 @@ main.container {
 
   .price-card.expanded .price-card-expanded {
     max-height: 300px;
-    padding: 0 20px 20px;
+    padding: 0 16px 16px;
   }
 
   /* Hide desktop-only elements on mobile */
@@ -217,6 +224,11 @@ main.container {
   .price-breakdown {
     border-top: none;
     padding-top: 0;
+  }
+
+  .price-item {
+    padding: 6px 0;
+    font-size: 0.8rem;
   }
 }
 
@@ -676,45 +688,54 @@ textarea {
 /* Admin Dashboard */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
 }
 
 .stat-card {
   background: var(--color-white);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   padding: var(--spacing-lg);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-gray-100);
+  border: 1px solid var(--color-gray-200);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .stat-card.primary {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  background: linear-gradient(145deg, #1d1d1f 0%, #2d2d30 100%);
   color: var(--color-white);
   border: none;
 }
 
 .stat-label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
   color: var(--color-gray-500);
   margin-bottom: var(--spacing-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .stat-card.primary .stat-label {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .stat-value {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 /* Table */
 .table-container {
   overflow-x: auto;
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   border: 1px solid var(--color-gray-200);
+  background: var(--color-white);
 }
 
 table {
@@ -723,18 +744,22 @@ table {
 }
 
 th, td {
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: 14px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
 th {
   background: var(--color-gray-50);
   font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--color-gray-600);
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+td {
+  font-size: 0.9rem;
 }
 
 tr:hover {
@@ -749,57 +774,59 @@ tr:last-child td {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  font-size: 0.8rem;
+  padding: 5px 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   border-radius: 100px;
 }
 
 .status-pending {
-  background: var(--color-warning-light);
-  color: var(--color-warning);
+  background: #fff3cd;
+  color: #856404;
 }
 
 .status-approved {
-  background: var(--color-success-light);
-  color: var(--color-success);
+  background: #d4edda;
+  color: #155724;
 }
 
 .status-rejected {
-  background: var(--color-error-light);
-  color: var(--color-error);
+  background: #f8d7da;
+  color: #721c24;
 }
 
 /* Filter Tabs */
 .filter-tabs {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 4px;
   margin-bottom: var(--spacing-lg);
-  border-bottom: 2px solid var(--color-gray-200);
-  padding-bottom: var(--spacing-md);
+  padding: 4px;
+  background: var(--color-gray-100);
+  border-radius: 10px;
+  width: fit-content;
 }
 
 .filter-tab {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  font-size: 0.9rem;
+  padding: 8px 16px;
+  font-size: 0.85rem;
   font-weight: 500;
-  color: var(--color-gray-500);
+  color: var(--color-gray-600);
   background: none;
   border: none;
   cursor: pointer;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   transition: all 0.2s ease;
   font-family: inherit;
 }
 
 .filter-tab:hover {
-  color: var(--color-gray-700);
-  background: var(--color-gray-100);
+  color: var(--color-gray-800);
 }
 
 .filter-tab.active {
-  color: var(--color-primary);
-  background: rgba(30, 58, 95, 0.1);
+  color: var(--color-gray-900);
+  background: var(--color-white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   font-weight: 600;
 }
 
@@ -1118,60 +1145,87 @@ textarea.answer-edit-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 60vh;
+  min-height: 70vh;
   padding: var(--spacing-xl);
+  background: linear-gradient(180deg, var(--color-gray-50) 0%, var(--color-white) 100%);
 }
 
 .login-box {
   background: var(--color-white);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  padding: var(--spacing-2xl);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  padding: 40px;
   width: 100%;
-  max-width: 400px;
+  max-width: 380px;
+  border: 1px solid var(--color-gray-100);
 }
 
 .login-box h2 {
   font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-primary);
+  font-weight: 600;
+  color: var(--color-gray-900);
   text-align: center;
   margin-bottom: var(--spacing-xl);
+  letter-spacing: -0.02em;
+}
+
+.login-box .form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.login-box .form-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-gray-700);
+  margin-bottom: 6px;
 }
 
 .login-box input {
   width: 100%;
   height: 48px;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 0 16px;
   font-size: 1rem;
   border: 1px solid var(--color-gray-300);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   box-sizing: border-box;
+  background: var(--color-gray-50);
+  transition: all 0.2s ease;
+}
+
+.login-box input:focus {
+  outline: none;
+  border-color: #0071e3;
+  background: var(--color-white);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
 }
 
 .login-button {
   width: 100%;
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: 14px 24px;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 500;
   font-family: inherit;
-  background: var(--color-primary);
+  background: #0071e3;
   color: var(--color-white);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
+  margin-top: var(--spacing-md);
 }
 
 .login-button:hover {
-  background: var(--color-primary-light);
+  background: #0077ed;
 }
 
 .error-message {
-  color: var(--color-error);
-  font-size: 0.9rem;
+  color: #ff3b30;
+  font-size: 0.85rem;
   text-align: center;
   margin-bottom: var(--spacing-md);
+  padding: 10px;
+  background: #fff2f2;
+  border-radius: 8px;
 }
 
 /* Modal */
@@ -1181,7 +1235,9 @@ textarea.answer-edit-input {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1191,8 +1247,8 @@ textarea.answer-edit-input {
 
 .modal-content {
   background: var(--color-white);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 500px;
   max-height: 90vh;
@@ -1203,40 +1259,50 @@ textarea.answer-edit-input {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 1px solid var(--color-gray-200);
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--color-gray-100);
 }
 
-.modal-header h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-primary);
+.modal-header h3,
+.modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
 }
 
 .modal-close {
-  background: none;
+  background: var(--color-gray-100);
   border: none;
-  font-size: 1.5rem;
-  color: var(--color-gray-400);
+  font-size: 1.25rem;
+  color: var(--color-gray-500);
   cursor: pointer;
   line-height: 1;
   padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
 .modal-close:hover {
-  color: var(--color-gray-600);
+  background: var(--color-gray-200);
+  color: var(--color-gray-700);
 }
 
 .modal-body {
-  padding: var(--spacing-xl);
+  padding: 24px;
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-top: 1px solid var(--color-gray-200);
+  gap: var(--spacing-sm);
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-gray-100);
+  background: var(--color-gray-50);
 }
 
 /* File Drop Zone */
