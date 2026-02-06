@@ -1526,6 +1526,9 @@ export function transformSurveyToVariables(
       } else if (fieldId === 'csName') {
         result['CSName'] = titleCaseName;
         result['CSNAME'] = titleCaseName;
+      } else if (fieldId === 'chairmanName') {
+        result['ChairmanName'] = titleCaseName;
+        result['CHAIRMANNAME'] = titleCaseName;
       }
     }
   }
