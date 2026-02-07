@@ -131,6 +131,8 @@ export default function SurveyForm() {
         });
       });
 
+      console.log('[AutoSave] Saving section:', completedSectionIndex, 'Email:', email);
+
       const result = await autoSaveSurvey({
         id: surveyId || undefined,
         customerInfo: {
@@ -144,6 +146,8 @@ export default function SurveyForm() {
         completedSectionIndex,
       });
 
+      console.log('[AutoSave] Success:', result);
+
       // 새로 생성된 경우 ID 저장
       if (result.id && result.id !== surveyId) {
         setSurveyId(result.id);
@@ -152,7 +156,7 @@ export default function SurveyForm() {
 
       lastSavedSectionRef.current = completedSectionIndex;
     } catch (error) {
-      console.error('Auto-save error:', error);
+      console.error('[AutoSave] Error:', error);
       // 자동 저장 실패는 사용자에게 알리지 않음 (조용히 실패)
     } finally {
       isAutoSavingRef.current = false;

@@ -116,6 +116,7 @@ async function handleAutosave(
   res: VercelResponse
 ) {
   const { id, customerInfo, answers, totalPrice, completedSectionIndex } = req.body;
+  console.log('[AutoSave API] Request received:', { id, email: customerInfo?.email, completedSectionIndex });
 
   // 기존 설문 ID가 있으면 업데이트
   if (id) {
