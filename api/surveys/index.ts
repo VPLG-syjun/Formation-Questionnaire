@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 // 설문 생성/제출 핸들러
 async function handleCreateSurvey(
-  client: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  client: any,
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -111,7 +111,7 @@ async function handleCreateSurvey(
 
 // 자동 저장 핸들러
 async function handleAutosave(
-  client: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  client: any,
   req: VercelRequest,
   res: VercelResponse
 ) {
@@ -177,7 +177,7 @@ async function handleAutosave(
 
 // 이메일로 작성중인 설문 찾기 핸들러
 async function handleFindByEmail(
-  client: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  client: any,
   req: VercelRequest,
   res: VercelResponse
 ) {
