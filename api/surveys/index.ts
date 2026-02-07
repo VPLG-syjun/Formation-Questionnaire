@@ -22,9 +22,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     client = await getRedisClient();
 
     if (req.method === 'POST') {
-      // 설문 생성
-      const { customerInfo, answers, totalPrice } = req.body;
+      // 설문 생성 또는 작성중 설문 제출
+      const { id: existingId, customerInfo, answers, totalPrice } = req.body;
 
+      // 기존 작성중 설문이 있으면 상태를 pending으로 변경
+      if (existingId) {
+        const existingSurveyStr = await client.hGet('surveys', existingId);
+        if (existingSurveyStr) {
+          const existingSurvey = JSON.parse(existingSurveyStr);
+          if (existingSurvey.status === 'in_progress') {
+            const updatedSurvey = {
+              ...existingSurvey,
+              customerInfo,
+              answers,
+              totalPrice,
+              status: 'pending',
+              completedSectionIndex: undefined,  // 제출 완료 시 제거
+              updatedAt: new Date().toISOString(),
+            };
+            await client.hSet('surveys', existingId, JSON.stringify(updatedSurvey));
+            return res.status(200).json({ id: existingId, message: '설문이 성공적으로 제출되었습니다.' });
+          }
+        }
+      }
+
+      // 새 설문 생성
       const id = uuidv4();
       const survey = {
         id,

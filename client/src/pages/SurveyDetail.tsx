@@ -333,12 +333,19 @@ export default function SurveyDetail() {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { class: string; text: string }> = {
+      in_progress: { class: 'status-in-progress', text: '작성중' },
       pending: { class: 'status-pending', text: '검토 대기' },
       approved: { class: 'status-approved', text: '승인됨' },
       rejected: { class: 'status-rejected', text: '반려됨' },
     };
     const { class: className, text } = statusMap[status] || statusMap.pending;
     return <span className={`status-badge ${className}`}>{text}</span>;
+  };
+
+  // 섹션 이름 가져오기
+  const getSectionName = (index: number) => {
+    const sectionNames = ['기본 정보', '회사 정보', '주소 정보', '이사회 정보', '임원 정보', '주주 정보', '금융 서비스', '추가 서비스', '최종 확인'];
+    return sectionNames[index] || `섹션 ${index + 1}`;
   };
 
   // 반복 그룹 데이터인지 확인 (객체 배열)
@@ -469,6 +476,22 @@ export default function SurveyDetail() {
             <span className="detail-label">상태</span>
             <span className="detail-value">{getStatusBadge(survey.status)}</span>
           </div>
+          {survey.status === 'in_progress' && survey.completedSectionIndex !== undefined && (
+            <div className="detail-row">
+              <span className="detail-label">완료된 섹션</span>
+              <span className="detail-value" style={{ color: 'var(--color-warning)' }}>
+                {getSectionName(survey.completedSectionIndex)}까지 ({survey.completedSectionIndex + 1}/9)
+              </span>
+            </div>
+          )}
+          {survey.status === 'in_progress' && (
+            <div className="detail-row">
+              <span className="detail-label"></span>
+              <span className="detail-value" style={{ fontSize: '0.85rem', color: 'var(--color-gray-500)' }}>
+                작성자가 설문을 완료하지 않고 페이지를 이탈했습니다.
+              </span>
+            </div>
+          )}
           <div className="detail-row">
             <span className="detail-label">예상 금액</span>
             <span className="detail-value" style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
@@ -476,9 +499,15 @@ export default function SurveyDetail() {
             </span>
           </div>
           <div className="detail-row">
-            <span className="detail-label">제출일</span>
+            <span className="detail-label">{survey.status === 'in_progress' ? '생성일' : '제출일'}</span>
             <span className="detail-value">{formatDate(survey.createdAt)}</span>
           </div>
+          {survey.updatedAt && survey.status === 'in_progress' && (
+            <div className="detail-row">
+              <span className="detail-label">마지막 업데이트</span>
+              <span className="detail-value">{formatDate(survey.updatedAt)}</span>
+            </div>
+          )}
           <div className="detail-row">
             <span className="detail-label">검토일</span>
             <span className="detail-value">{formatDate(survey.reviewedAt)}</span>

@@ -113,16 +113,19 @@ export interface Survey {
   };
   answers: SurveyAnswer[];
   totalPrice: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'in_progress' | 'pending' | 'approved' | 'rejected';
+  completedSectionIndex?: number;  // 완료된 마지막 섹션 인덱스 (작성중일 때)
   adminNotes?: string;
   adminDates?: AdminDates;    // 관리자가 설정하는 날짜들
   adminValues?: AdminValues;  // 관리자가 설정하는 값들
   createdAt: string;
+  updatedAt?: string;         // 마지막 업데이트 시간
   reviewedAt?: string;
   documentGeneratedAt?: string;
 }
 
 export interface CreateSurveyDTO {
+  id?: string;  // 기존 작성중 설문 ID (있으면 해당 설문을 pending으로 변경)
   customerInfo: {
     name: string;
     email: string;

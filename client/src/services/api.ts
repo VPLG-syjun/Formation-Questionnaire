@@ -28,6 +28,52 @@ export async function createSurvey(data: CreateSurveyDTO): Promise<{ id: string;
   return response.json();
 }
 
+// 작성중 설문 자동 저장 (새로 생성하거나 기존 설문 업데이트)
+export interface AutoSaveDTO {
+  id?: string;  // 기존 설문 ID (없으면 새로 생성)
+  customerInfo: {
+    name?: string;
+    email: string;
+    phone?: string;
+    company?: string;
+  };
+  answers: SurveyAnswer[];
+  totalPrice: number;
+  completedSectionIndex: number;  // 완료된 마지막 섹션 인덱스
+}
+
+export async function autoSaveSurvey(data: AutoSaveDTO): Promise<{ id: string; message: string }> {
+  const response = await fetch(`${API_BASE}/surveys/autosave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || '자동 저장에 실패했습니다.');
+  }
+  return response.json();
+}
+
+// 이메일로 작성중인 설문 찾기
+export interface FindByEmailResponse {
+  found: boolean;
+  survey: Survey | null;
+}
+
+export async function findSurveyByEmail(email: string): Promise<FindByEmailResponse> {
+  const response = await fetch(`${API_BASE}/surveys/find-by-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || '설문 검색에 실패했습니다.');
+  }
+  return response.json();
+}
+
 export interface UpdateSurveyData {
   status?: string;
   adminNotes?: string;

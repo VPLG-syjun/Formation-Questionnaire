@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const stats = useMemo(() => {
     return {
       total: allSurveys.length,
+      inProgress: allSurveys.filter(s => s.status === 'in_progress').length,
       pending: allSurveys.filter(s => s.status === 'pending').length,
       approved: allSurveys.filter(s => s.status === 'approved').length,
       rejected: allSurveys.filter(s => s.status === 'rejected').length,
@@ -75,13 +76,32 @@ export default function AdminDashboard() {
     return '$' + amount.toLocaleString();
   };
 
-  const getStatusBadge = (status: string) => {
+  // 섹션 이름 가져오기
+  const getSectionName = (index: number) => {
+    const sectionNames = ['기본 정보', '회사 정보', '주소 정보', '이사회 정보', '임원 정보', '주주 정보', '금융 서비스', '추가 서비스', '최종 확인'];
+    return sectionNames[index] || `섹션 ${index + 1}`;
+  };
+
+  const getStatusBadge = (status: string, completedSectionIndex?: number) => {
     const statusMap: Record<string, { class: string; text: string }> = {
+      in_progress: { class: 'status-in-progress', text: '작성중' },
       pending: { class: 'status-pending', text: '검토 대기' },
       approved: { class: 'status-approved', text: '승인됨' },
       rejected: { class: 'status-rejected', text: '반려됨' },
     };
     const { class: className, text } = statusMap[status] || statusMap.pending;
+
+    if (status === 'in_progress' && completedSectionIndex !== undefined) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <span className={`status-badge ${className}`}>{text}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-gray-500)' }}>
+            {getSectionName(completedSectionIndex)}까지
+          </span>
+        </div>
+      );
+    }
+
     return <span className={`status-badge ${className}`}>{text}</span>;
   };
 
@@ -117,6 +137,10 @@ export default function AdminDashboard() {
             <div className="stat-value">{stats.total}</div>
           </div>
           <div className="stat-card">
+            <div className="stat-label">작성중</div>
+            <div className="stat-value" style={{ color: 'var(--color-gray-500)' }}>{stats.inProgress}</div>
+          </div>
+          <div className="stat-card">
             <div className="stat-label">검토 대기</div>
             <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{stats.pending}</div>
           </div>
@@ -141,6 +165,12 @@ export default function AdminDashboard() {
             onClick={() => setFilter('')}
           >
             전체
+          </button>
+          <button
+            className={`filter-tab ${filter === 'in_progress' ? 'active' : ''}`}
+            onClick={() => setFilter('in_progress')}
+          >
+            작성중
           </button>
           <button
             className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
@@ -190,7 +220,7 @@ export default function AdminDashboard() {
                     <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
                       {formatPrice(survey.totalPrice || 0)}
                     </td>
-                    <td>{getStatusBadge(survey.status)}</td>
+                    <td>{getStatusBadge(survey.status, survey.completedSectionIndex)}</td>
                     <td style={{ color: 'var(--color-gray-500)', fontSize: '0.9rem' }}>
                       {formatDate(survey.createdAt)}
                     </td>

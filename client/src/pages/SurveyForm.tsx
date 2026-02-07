@@ -1,8 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { questionSections, BASE_PRICE } from '../data/questions';
-import { Question, SurveyAnswer, RepeatableGroupItem, RepeatableField } from '../types/survey';
-import { createSurvey } from '../services/api';
+import { Question, SurveyAnswer, RepeatableGroupItem, RepeatableField, Survey } from '../types/survey';
+import { createSurvey, autoSaveSurvey, findSurveyByEmail } from '../services/api';
+
+// localStorage 키
+const SURVEY_ID_KEY = 'surveyFormId';
 
 // 이름-주소-이메일 매핑 정보 타입
 interface PersonInfo {
@@ -18,6 +21,14 @@ export default function SurveyForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPriceExpanded, setIsPriceExpanded] = useState(false);
+  const [surveyId, setSurveyId] = useState<string | null>(() => localStorage.getItem(SURVEY_ID_KEY));
+  const lastSavedSectionRef = useRef<number>(-1);
+  const isAutoSavingRef = useRef(false);
+
+  // 기존 설문 복원 팝업 관련 상태
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [existingSurvey, setExistingSurvey] = useState<Survey | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   // 모든 입력된 이름-주소-이메일 매핑을 수집하는 함수
   // currentAnswers 인수를 받아서 현재 상태를 기반으로 수집
@@ -78,6 +89,123 @@ export default function SurveyForm() {
 
     return personMap;
   }, [answers]);
+
+  // 자동 저장 함수
+  const performAutoSave = useCallback(async (completedSectionIndex: number, currentAnswers: Record<string, string | string[] | RepeatableGroupItem[]>) => {
+    // 이메일이 없으면 저장하지 않음 (기본 정보 미완성)
+    const email = currentAnswers.email as string;
+    if (!email) return;
+
+    // 이미 저장 중이면 스킵
+    if (isAutoSavingRef.current) return;
+
+    // 이미 저장된 섹션이면 스킵
+    if (completedSectionIndex <= lastSavedSectionRef.current) return;
+
+    isAutoSavingRef.current = true;
+
+    try {
+      // 답변 변환
+      const surveyAnswers: SurveyAnswer[] = Object.entries(currentAnswers).map(([questionId, value]) => ({
+        questionId,
+        value,
+      }));
+
+      // 가격 계산
+      let totalPrice = BASE_PRICE;
+      questionSections.forEach(section => {
+        section.questions.forEach(question => {
+          const answer = currentAnswers[question.id];
+          if (!answer) return;
+
+          if (question.type === 'repeatable_group' && question.pricePerItem) {
+            const items = answer as RepeatableGroupItem[];
+            const additionalItems = Math.max(0, items.length - 1);
+            totalPrice += additionalItems * question.pricePerItem;
+            return;
+          }
+
+          if (question.priceEffect?.type === 'perAnswer' && question.priceEffect.values) {
+            totalPrice += question.priceEffect.values[answer as string] || 0;
+          }
+        });
+      });
+
+      const result = await autoSaveSurvey({
+        id: surveyId || undefined,
+        customerInfo: {
+          name: currentAnswers.name as string || '',
+          email: email,
+          phone: currentAnswers.phone as string,
+          company: currentAnswers.companyName1 as string,
+        },
+        answers: surveyAnswers,
+        totalPrice,
+        completedSectionIndex,
+      });
+
+      // 새로 생성된 경우 ID 저장
+      if (result.id && result.id !== surveyId) {
+        setSurveyId(result.id);
+        localStorage.setItem(SURVEY_ID_KEY, result.id);
+      }
+
+      lastSavedSectionRef.current = completedSectionIndex;
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      // 자동 저장 실패는 사용자에게 알리지 않음 (조용히 실패)
+    } finally {
+      isAutoSavingRef.current = false;
+    }
+  }, [surveyId]);
+
+  // 페이지 이탈 시 자동 저장
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 이메일이 있고 기본 정보 섹션(0)을 완료한 경우에만 저장
+      if (answers.email && currentSectionIndex >= 0) {
+        // sendBeacon을 사용하여 비동기적으로 저장 시도
+        const surveyAnswers = Object.entries(answers).map(([questionId, value]) => ({
+          questionId,
+          value,
+        }));
+
+        let totalPrice = BASE_PRICE;
+        questionSections.forEach(section => {
+          section.questions.forEach(question => {
+            const answer = answers[question.id];
+            if (!answer) return;
+            if (question.type === 'repeatable_group' && question.pricePerItem) {
+              const items = answer as RepeatableGroupItem[];
+              totalPrice += Math.max(0, items.length - 1) * question.pricePerItem;
+              return;
+            }
+            if (question.priceEffect?.type === 'perAnswer' && question.priceEffect.values) {
+              totalPrice += question.priceEffect.values[answer as string] || 0;
+            }
+          });
+        });
+
+        const data = JSON.stringify({
+          id: surveyId || undefined,
+          customerInfo: {
+            name: answers.name as string || '',
+            email: answers.email as string,
+            phone: answers.phone as string,
+            company: answers.companyName1 as string,
+          },
+          answers: surveyAnswers,
+          totalPrice,
+          completedSectionIndex: currentSectionIndex,
+        });
+
+        navigator.sendBeacon('/api/surveys/autosave', new Blob([data], { type: 'application/json' }));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [answers, currentSectionIndex, surveyId]);
 
   const currentSection = questionSections[currentSectionIndex];
   const totalSections = questionSections.length;
@@ -399,13 +527,74 @@ export default function SurveyForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
-    if (!validateSection()) return;
+  // 기존 설문 복원 확인 및 다음 섹션으로 이동
+  const proceedToNextSection = () => {
+    // 섹션 완료 시 자동 저장
+    performAutoSave(currentSectionIndex, answers);
 
     if (currentSectionIndex < totalSections - 1) {
       setCurrentSectionIndex(prev => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  // 기존 설문 불러오기
+  const handleResumeSurvey = () => {
+    if (!existingSurvey) return;
+
+    // 기존 설문 답변을 현재 상태로 복원
+    const restoredAnswers: Record<string, string | string[] | RepeatableGroupItem[]> = {};
+    existingSurvey.answers.forEach((answer: SurveyAnswer) => {
+      restoredAnswers[answer.questionId] = answer.value;
+    });
+
+    setAnswers(restoredAnswers);
+    setSurveyId(existingSurvey.id);
+    localStorage.setItem(SURVEY_ID_KEY, existingSurvey.id);
+    lastSavedSectionRef.current = existingSurvey.completedSectionIndex || 0;
+
+    // 다음 섹션으로 이동 (완료된 섹션 + 1)
+    const nextSection = (existingSurvey.completedSectionIndex || 0) + 1;
+    setCurrentSectionIndex(Math.min(nextSection, totalSections - 1));
+
+    setShowResumeModal(false);
+    setExistingSurvey(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 새로 작성하기 (기존 설문 무시)
+  const handleStartFresh = () => {
+    setShowResumeModal(false);
+    setExistingSurvey(null);
+    proceedToNextSection();
+  };
+
+  const handleNext = async () => {
+    if (!validateSection()) return;
+
+    // 기본 정보 섹션에서 다음 버튼 클릭 시 기존 설문 확인
+    if (currentSectionIndex === 0 && !surveyId) {
+      const email = answers.email as string;
+      if (email) {
+        setIsCheckingEmail(true);
+        try {
+          const result = await findSurveyByEmail(email);
+          if (result.found && result.survey) {
+            // 기존 설문 발견 - 팝업 표시
+            setExistingSurvey(result.survey);
+            setShowResumeModal(true);
+            setIsCheckingEmail(false);
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking existing survey:', error);
+          // 오류 시 그냥 진행
+        }
+        setIsCheckingEmail(false);
+      }
+    }
+
+    proceedToNextSection();
   };
 
   const handlePrev = () => {
@@ -436,6 +625,7 @@ export default function SurveyForm() {
       }));
 
       await createSurvey({
+        id: surveyId || undefined,  // 기존 작성중 설문 ID 포함
         customerInfo: {
           name: answers.name as string,
           email: answers.email as string,
@@ -445,6 +635,9 @@ export default function SurveyForm() {
         answers: surveyAnswers,
         totalPrice: priceBreakdown.total,
       });
+
+      // 제출 완료 후 localStorage 정리
+      localStorage.removeItem(SURVEY_ID_KEY);
 
       navigate('/success');
     } catch (error) {
@@ -729,8 +922,9 @@ export default function SurveyForm() {
                 type="button"
                 className="btn btn-primary"
                 onClick={handleNext}
+                disabled={isCheckingEmail}
               >
-                다음
+                {isCheckingEmail ? '확인 중...' : '다음'}
               </button>
             ) : (
               <button
@@ -794,6 +988,65 @@ export default function SurveyForm() {
           </div>
         </div>
       </aside>
+
+      {/* 기존 설문 복원 팝업 */}
+      {showResumeModal && existingSurvey && (
+        <div className="modal-overlay">
+          <div className="modal-content resume-modal">
+            <h3>기존 작성 내역 발견</h3>
+            <p>
+              이전에 작성하던 질문지가 있습니다.<br />
+              이어서 작성하시겠습니까?
+            </p>
+            <div className="resume-info">
+              <div className="resume-info-row">
+                <span className="resume-info-label">이메일</span>
+                <span className="resume-info-value">{existingSurvey.customerInfo?.email}</span>
+              </div>
+              <div className="resume-info-row">
+                <span className="resume-info-label">진행 상태</span>
+                <span className="resume-info-value">
+                  {getSectionNameForModal(existingSurvey.completedSectionIndex || 0)}까지 완료
+                </span>
+              </div>
+              <div className="resume-info-row">
+                <span className="resume-info-label">마지막 저장</span>
+                <span className="resume-info-value">
+                  {new Date(existingSurvey.updatedAt || existingSurvey.createdAt).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+            </div>
+            <div className="modal-buttons">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleStartFresh}
+              >
+                새로 작성
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleResumeSurvey}
+              >
+                이어서 작성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  // 섹션 이름 반환 함수 (모달용)
+  function getSectionNameForModal(index: number) {
+    const sectionNames = ['기본 정보', '회사 정보', '주소 정보', '이사회 정보', '임원 정보', '주주 정보', '금융 서비스', '추가 서비스', '최종 확인'];
+    return sectionNames[index] || `섹션 ${index + 1}`;
+  }
 }
