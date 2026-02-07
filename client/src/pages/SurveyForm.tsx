@@ -569,6 +569,11 @@ export default function SurveyForm() {
 
   // 새로 작성하기 (기존 설문 무시)
   const handleStartFresh = () => {
+    // 기존 surveyId 초기화 (새로운 설문 생성)
+    setSurveyId(null);
+    localStorage.removeItem(SURVEY_ID_KEY);
+    lastSavedSectionRef.current = -1;
+
     setShowResumeModal(false);
     setExistingSurvey(null);
     proceedToNextSection();
@@ -578,13 +583,20 @@ export default function SurveyForm() {
     if (!validateSection()) return;
 
     // 기본 정보 섹션에서 다음 버튼 클릭 시 기존 설문 확인
-    if (currentSectionIndex === 0 && !surveyId) {
+    // surveyId가 있어도 확인 (이전 세션에서 localStorage에 저장된 경우)
+    if (currentSectionIndex === 0) {
       const email = answers.email as string;
       if (email) {
         setIsCheckingEmail(true);
         try {
           const result = await findSurveyByEmail(email);
           if (result.found && result.survey) {
+            // 현재 surveyId와 같은 설문이면 바로 진행 (이미 같은 설문 진행 중)
+            if (surveyId && result.survey.id === surveyId) {
+              setIsCheckingEmail(false);
+              proceedToNextSection();
+              return;
+            }
             // 기존 설문 발견 - 팝업 표시
             setExistingSurvey(result.survey);
             setShowResumeModal(true);
