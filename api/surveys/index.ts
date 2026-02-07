@@ -56,11 +56,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('API Error:', error);
-    return res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+    return res.status(500).json({
+      error: '서버 오류가 발생했습니다.',
+      details: error?.message || String(error)
+    });
   } finally {
-    if (client) await client.disconnect();
+    if (client) {
+      try {
+        await client.disconnect();
+      } catch (e) {
+        console.error('Redis disconnect error:', e);
+      }
+    }
   }
 }
 

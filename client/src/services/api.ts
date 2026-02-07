@@ -49,8 +49,14 @@ export async function autoSaveSurvey(data: AutoSaveDTO): Promise<{ id: string; m
     body: JSON.stringify({ ...data, action: 'autosave' }),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || '자동 저장에 실패했습니다.');
+    const text = await response.text();
+    console.error('[AutoSave API] Error response:', response.status, text);
+    try {
+      const error = JSON.parse(text);
+      throw new Error(error.details || error.error || '자동 저장에 실패했습니다.');
+    } catch {
+      throw new Error(`자동 저장 실패 (${response.status}): ${text.substring(0, 100)}`);
+    }
   }
   return response.json();
 }
@@ -68,8 +74,14 @@ export async function findSurveyByEmail(email: string): Promise<FindByEmailRespo
     body: JSON.stringify({ email, action: 'findByEmail' }),
   });
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || '설문 검색에 실패했습니다.');
+    const text = await response.text();
+    console.error('[FindByEmail API] Error response:', response.status, text);
+    try {
+      const error = JSON.parse(text);
+      throw new Error(error.details || error.error || '설문 검색에 실패했습니다.');
+    } catch {
+      throw new Error(`설문 검색 실패 (${response.status}): ${text.substring(0, 100)}`);
+    }
   }
   return response.json();
 }
