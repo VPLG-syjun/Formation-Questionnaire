@@ -43,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { status } = req.query;
       const allSurveys = await client.hGetAll('surveys');
 
-      let surveys = Object.values(allSurveys).map((s) => JSON.parse(s));
+      let surveys = Object.values(allSurveys).map((s) => JSON.parse(s as string));
 
       if (status && status !== 'all') {
         surveys = surveys.filter((s) => s.status === status);
@@ -198,7 +198,7 @@ async function handleFindByEmail(
 
   // 모든 설문 조회
   const allSurveys = await client.hGetAll('surveys');
-  const surveys = Object.values(allSurveys).map((s) => JSON.parse(s));
+  const surveys = Object.values(allSurveys).map((s) => JSON.parse(s as string));
 
   // 해당 이메일로 작성중인 설문 찾기 (가장 최근 것)
   const inProgressSurvey = surveys
