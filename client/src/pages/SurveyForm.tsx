@@ -187,6 +187,7 @@ export default function SurveyForm() {
         });
 
         const data = JSON.stringify({
+          action: 'autosave',
           id: surveyId || undefined,
           customerInfo: {
             name: answers.name as string || '',
@@ -199,7 +200,7 @@ export default function SurveyForm() {
           completedSectionIndex: currentSectionIndex,
         });
 
-        navigator.sendBeacon('/api/surveys/autosave', new Blob([data], { type: 'application/json' }));
+        navigator.sendBeacon('/api/surveys', new Blob([data], { type: 'application/json' }));
       }
     };
 

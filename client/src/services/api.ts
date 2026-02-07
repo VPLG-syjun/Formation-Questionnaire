@@ -43,10 +43,10 @@ export interface AutoSaveDTO {
 }
 
 export async function autoSaveSurvey(data: AutoSaveDTO): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${API_BASE}/surveys/autosave`, {
+  const response = await fetch(`${API_BASE}/surveys`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, action: 'autosave' }),
   });
   if (!response.ok) {
     const error = await response.json();
@@ -62,10 +62,10 @@ export interface FindByEmailResponse {
 }
 
 export async function findSurveyByEmail(email: string): Promise<FindByEmailResponse> {
-  const response = await fetch(`${API_BASE}/surveys/find-by-email`, {
+  const response = await fetch(`${API_BASE}/surveys`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, action: 'findByEmail' }),
   });
   if (!response.ok) {
     const error = await response.json();
