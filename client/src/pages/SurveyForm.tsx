@@ -21,10 +21,22 @@ export default function SurveyForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPriceExpanded, setIsPriceExpanded] = useState(false);
-  // surveyId는 ref로만 관리 (클로저 문제 방지, 상태 불필요)
+
+  // Refs for closure-safe access (항상 최신 값 유지)
   const surveyIdRef = useRef<string | null>(null);
+  const answersRef = useRef<Record<string, string | string[] | RepeatableGroupItem[]>>({});
+  const currentSectionIndexRef = useRef(0);
   const isAutoSavingRef = useRef(false);
   const saveQueueRef = useRef<Array<{ sectionIndex: number; answers: Record<string, string | string[] | RepeatableGroupItem[]> }>>([]);
+
+  // state가 변경될 때마다 ref 동기화
+  useEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
+
+  useEffect(() => {
+    currentSectionIndexRef.current = currentSectionIndex;
+  }, [currentSectionIndex]);
 
   // 기존 설문 복원 팝업 관련 상태
   const [showResumeModal, setShowResumeModal] = useState(false);
@@ -195,12 +207,14 @@ export default function SurveyForm() {
   // 페이지 이탈 시 자동 저장 (surveyId가 있는 경우에만 - 이미 진행 중인 설문)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // surveyIdRef.current를 사용하여 최신 ID 확인
+      // refs를 사용하여 항상 최신 값 사용 (클로저 문제 방지)
       const currentSurveyId = surveyIdRef.current;
+      const currentAnswers = answersRef.current;
+      const sectionIndex = currentSectionIndexRef.current;
 
       // surveyId가 있고 이메일이 있는 경우에만 저장 (기존 설문 업데이트)
-      if (currentSurveyId && answers.email) {
-        const surveyAnswers = Object.entries(answers).map(([questionId, value]) => ({
+      if (currentSurveyId && currentAnswers.email) {
+        const surveyAnswers = Object.entries(currentAnswers).map(([questionId, value]) => ({
           questionId,
           value,
         }));
@@ -208,7 +222,7 @@ export default function SurveyForm() {
         let totalPrice = BASE_PRICE;
         questionSections.forEach(section => {
           section.questions.forEach(question => {
-            const answer = answers[question.id];
+            const answer = currentAnswers[question.id];
             if (!answer) return;
             if (question.type === 'repeatable_group' && question.pricePerItem) {
               const items = answer as RepeatableGroupItem[];
@@ -221,20 +235,18 @@ export default function SurveyForm() {
           });
         });
 
-        // currentSectionIndex가 0보다 크면 이전 섹션까지 완료된 것
-        // 예: currentSectionIndex=2 (주소 정보)에 있으면, 섹션 0,1은 완료됨
-        // 하지만 현재 작성 중인 내용도 저장해야 하므로 currentSectionIndex - 1로 저장
-        // (다음에 이어서 작성할 때 현재 섹션부터 시작하도록)
-        const completedIndex = currentSectionIndex > 0 ? currentSectionIndex - 1 : 0;
+        // 현재 섹션까지 완료된 것으로 저장 (이어서 작성 시 다음 섹션부터 시작)
+        // sectionIndex가 0보다 크면 현재 작업 중인 섹션의 이전까지 완료
+        const completedIndex = sectionIndex > 0 ? sectionIndex - 1 : 0;
 
         const data = JSON.stringify({
           action: 'autosave',
           id: currentSurveyId,
           customerInfo: {
-            name: answers.name as string || '',
-            email: answers.email as string,
-            phone: answers.phone as string,
-            company: answers.companyName1 as string,
+            name: currentAnswers.name as string || '',
+            email: currentAnswers.email as string,
+            phone: currentAnswers.phone as string,
+            company: currentAnswers.companyName1 as string,
           },
           answers: surveyAnswers,
           totalPrice,
@@ -248,7 +260,7 @@ export default function SurveyForm() {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [answers, currentSectionIndex]);
+  }, []); // 빈 의존성 배열 - refs를 사용하므로 재등록 불필요
 
   const currentSection = questionSections[currentSectionIndex];
   const totalSections = questionSections.length;
