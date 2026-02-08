@@ -207,7 +207,7 @@ export default function SurveyForm() {
     processQueue();
   }, [processQueue]);
 
-  // 페이지 이탈 시 자동 저장 (surveyId가 있는 경우에만 - 이미 진행 중인 설문)
+  // 페이지 이탈 시 자동 저장 (이메일이 있으면 항상 저장 시도)
   useEffect(() => {
     const handleBeforeUnload = () => {
       // refs를 사용하여 항상 최신 값 사용 (클로저 문제 방지)
@@ -215,8 +215,8 @@ export default function SurveyForm() {
       const currentAnswers = answersRef.current;
       const sectionIndex = currentSectionIndexRef.current;
 
-      // surveyId가 있고 이메일이 있는 경우에만 저장 (기존 설문 업데이트)
-      if (currentSurveyId && currentAnswers.email) {
+      // 이메일이 있으면 저장 (신규 또는 기존 설문)
+      if (currentAnswers.email) {
         const surveyAnswers = Object.entries(currentAnswers).map(([questionId, value]) => ({
           questionId,
           value,
@@ -256,7 +256,7 @@ export default function SurveyForm() {
           completedSectionIndex: completedIndex,
         });
 
-        console.log('[BeforeUnload] Saving with surveyId:', currentSurveyId, 'completedIndex:', completedIndex, 'answers:', surveyAnswers.length);
+        console.log('[BeforeUnload] Saving:', currentSurveyId ? 'update' : 'new', 'completedIndex:', completedIndex, 'answers:', surveyAnswers.length);
         navigator.sendBeacon('/api/surveys', new Blob([data], { type: 'application/json' }));
       }
     };
