@@ -21,7 +21,8 @@ export default function SurveyForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPriceExpanded, setIsPriceExpanded] = useState(false);
-  const [surveyId, setSurveyId] = useState<string | null>(() => localStorage.getItem(SURVEY_ID_KEY));
+  // surveyId는 페이지 로드 시 복원하지 않음 (이어서 작성 선택 또는 자동저장 시에만 설정)
+  const [surveyId, setSurveyId] = useState<string | null>(null);
   const lastSavedSectionRef = useRef<number>(-1);
   const isAutoSavingRef = useRef(false);
 
@@ -163,12 +164,12 @@ export default function SurveyForm() {
     }
   }, [surveyId]);
 
-  // 페이지 이탈 시 자동 저장
+  // 페이지 이탈 시 자동 저장 (surveyId가 있는 경우에만 - 이미 진행 중인 설문)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // 이메일이 있고 기본 정보 섹션(0)을 완료한 경우에만 저장
-      if (answers.email && currentSectionIndex >= 0) {
-        // sendBeacon을 사용하여 비동기적으로 저장 시도
+      // surveyId가 있고 이메일이 있는 경우에만 저장 (기존 설문 업데이트)
+      // surveyId가 없으면 저장하지 않음 (기본 정보만 작성하고 이탈하는 경우 저장 안 함)
+      if (surveyId && answers.email) {
         const surveyAnswers = Object.entries(answers).map(([questionId, value]) => ({
           questionId,
           value,
@@ -192,7 +193,7 @@ export default function SurveyForm() {
 
         const data = JSON.stringify({
           action: 'autosave',
-          id: surveyId || undefined,
+          id: surveyId,
           customerInfo: {
             name: answers.name as string || '',
             email: answers.email as string,
