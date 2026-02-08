@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
-import { sendSurveyNotification } from '../utils/email';
+import { sendSurveyNotification } from '../utils/email.js';
 
 async function getRedisClient() {
   const client = createClient({ url: process.env.REDIS_URL });
