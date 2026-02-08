@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
+import { sendSurveyNotification } from '../utils/email';
 
 async function getRedisClient() {
   const client = createClient({ url: process.env.REDIS_URL });
@@ -56,6 +57,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const newId = id || uuidv4();
         const survey = { id: newId, customerInfo, answers, totalPrice, status: 'in_progress', completedSectionIndex, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
         await client.hSet('surveys', newId, JSON.stringify(survey));
+
+        // 새 설문 생성 시 이메일 알림 발송
+        sendSurveyNotification({
+          id: newId,
+          email: customerInfo?.email || '',
+          name: customerInfo?.name,
+          company: customerInfo?.company,
+          status: 'in_progress',
+          completedSectionIndex,
+          totalPrice,
+        }).catch(err => console.error('[Email] Background send failed:', err));
+
         await disconnectSafely(client);
         return res.status(201).json({ id: newId, message: '설문이 자동 저장되었습니다.', isNew: true });
       }
@@ -85,6 +98,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (existingSurvey.status === 'in_progress') {
             const updatedSurvey = { ...existingSurvey, customerInfo, answers, totalPrice, status: 'pending', completedSectionIndex: undefined, updatedAt: new Date().toISOString() };
             await client.hSet('surveys', existingId, JSON.stringify(updatedSurvey));
+
+            // 설문 제출 시 이메일 알림 발송
+            sendSurveyNotification({
+              id: existingId,
+              email: customerInfo?.email || existingSurvey.customerInfo?.email || '',
+              name: customerInfo?.name || existingSurvey.customerInfo?.name,
+              company: customerInfo?.company || existingSurvey.customerInfo?.company,
+              status: 'pending',
+              totalPrice,
+            }).catch(err => console.error('[Email] Background send failed:', err));
+
             await disconnectSafely(client);
             return res.status(200).json({ id: existingId, message: '설문이 성공적으로 제출되었습니다.' });
           }
@@ -94,6 +118,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const newId = uuidv4();
       const survey = { id: newId, customerInfo, answers, totalPrice, status: 'pending', createdAt: new Date().toISOString() };
       await client.hSet('surveys', newId, JSON.stringify(survey));
+
+      // 새 설문 제출 시 이메일 알림 발송
+      sendSurveyNotification({
+        id: newId,
+        email: customerInfo?.email || '',
+        name: customerInfo?.name,
+        company: customerInfo?.company,
+        status: 'pending',
+        totalPrice,
+      }).catch(err => console.error('[Email] Background send failed:', err));
+
       await disconnectSafely(client);
       return res.status(201).json({ id: newId, message: '설문이 성공적으로 제출되었습니다.' });
     }
