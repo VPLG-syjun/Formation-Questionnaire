@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from 'redis';
 import { v4 as uuidv4 } from 'uuid';
+import { Resend } from 'resend';
 import { sendSurveyNotification } from '../utils/email.js';
 
 async function getRedisClient() {
@@ -34,6 +35,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       const { action, id, customerInfo, answers, totalPrice, completedSectionIndex, email } = req.body;
+
+      // 이메일 테스트 (Redis 연결 불필요)
+      if (action === 'testEmail') {
+        await disconnectSafely(client);
+
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+          return res.status(500).json({
+            success: false,
+            error: 'RESEND_API_KEY is not configured',
+          });
+        }
+
+        try {
+          const resend = new Resend(apiKey);
+          const { data, error } = await resend.emails.send({
+            from: 'FirstRegister <onboarding@resend.dev>',
+            to: 'info@firstregister.us',
+            subject: '[테스트] FirstRegister 이메일 발송 테스트',
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px;">
+                <h2>이메일 발송 테스트</h2>
+                <p>이 메일이 도착했다면 이메일 설정이 정상입니다.</p>
+                <p>발송 시간: ${new Date().toISOString()}</p>
+              </div>
+            `,
+          });
+
+          if (error) {
+            return res.status(400).json({ success: false, error });
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: '테스트 이메일이 발송되었습니다.',
+            data,
+          });
+        } catch (err: any) {
+          return res.status(500).json({
+            success: false,
+            error: err.message || String(err),
+          });
+        }
+      }
 
       // 자동 저장
       if (action === 'autosave') {
