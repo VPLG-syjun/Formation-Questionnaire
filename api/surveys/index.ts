@@ -76,13 +76,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 </table>
 
                 <div style="margin-top: 24px; padding: 16px; background-color: #f3f4f6; border-radius: 8px; text-align: center;">
-                  <p style="margin: 0 0 12px 0; color: #4b5563; font-size: 14px;">
-                    이 메일이 도착했다면 이메일 설정이 정상입니다.
-                  </p>
-                  <a href="https://formation-questionnaire.vercel.app/admin/login"
-                     style="display: inline-block; padding: 10px 24px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                    관리자 대시보드 열기
-                  </a>
+                  <p style="margin: 0 0 12px 0; color: #4b5563; font-size: 14px;">이 메일이 도착했다면 이메일 설정이 정상입니다.</p>
+                  <a href="https://formation-questionnaire.vercel.app/admin/login" style="display: inline-block; padding: 12px 28px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">관리자 대시보드 열기</a>
+                  <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 12px;">또는 링크 복사: <a href="https://formation-questionnaire.vercel.app/admin/login" style="color: #3b82f6;">https://formation-questionnaire.vercel.app/admin/login</a></p>
                 </div>
 
                 <p style="margin-top: 24px; color: #9ca3af; font-size: 12px;">
