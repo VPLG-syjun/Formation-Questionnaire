@@ -58,8 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const survey = { id: newId, customerInfo, answers, totalPrice, status: 'in_progress', completedSectionIndex, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
         await client.hSet('surveys', newId, JSON.stringify(survey));
 
-        // 새 설문 생성 시 이메일 알림 발송
-        sendSurveyNotification({
+        // 새 설문 생성 시 이메일 알림 발송 (await로 완료 대기)
+        await sendSurveyNotification({
           id: newId,
           email: customerInfo?.email || '',
           name: customerInfo?.name,
@@ -99,8 +99,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const updatedSurvey = { ...existingSurvey, customerInfo, answers, totalPrice, status: 'pending', completedSectionIndex: undefined, updatedAt: new Date().toISOString() };
             await client.hSet('surveys', existingId, JSON.stringify(updatedSurvey));
 
-            // 설문 제출 시 이메일 알림 발송
-            sendSurveyNotification({
+            // 설문 제출 시 이메일 알림 발송 (await로 완료 대기)
+            await sendSurveyNotification({
               id: existingId,
               email: customerInfo?.email || existingSurvey.customerInfo?.email || '',
               name: customerInfo?.name || existingSurvey.customerInfo?.name,
@@ -119,8 +119,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const survey = { id: newId, customerInfo, answers, totalPrice, status: 'pending', createdAt: new Date().toISOString() };
       await client.hSet('surveys', newId, JSON.stringify(survey));
 
-      // 새 설문 제출 시 이메일 알림 발송
-      sendSurveyNotification({
+      // 새 설문 제출 시 이메일 알림 발송 (await로 완료 대기)
+      await sendSurveyNotification({
         id: newId,
         email: customerInfo?.email || '',
         name: customerInfo?.name,
