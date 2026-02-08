@@ -11,7 +11,7 @@ export const questionSections: QuestionSection[] = [
       {
         id: 'email',
         type: 'email',
-        text: '이메일 주소',
+        text: '이메일 주소 수집',
         description: '이 질문지는 FirstRegister가 스타트업 회사 설립을 대행하기 위해 필요한 여러 서류들을 준비하는 과정에 필수적인 정보들을 제공받을 수 있도록 구성되어 있습니다.\n\n포함된 질문들은 창립 당시 최소한의 자산 및 운용 요건으로 전형적인 법적 스타트업을 설립하기 위한 내용으로 정해져 있으며, 만약 스타트업과 관련해 질문에 해당하는 내용이 없거나 답변하기 어려울 경우 "N/A"로 응답하여 주시거나 필수 질문이 아닐 경우 공란으로 두셔도 괜찮습니다.\n\nFirstRegister는 여기 기재하시는 Email 주소를 이용해 질문지 내용에 대한 확인을 드리고, Invoice를 발행할 예정입니다. 반드시 정확한 주 Email 주소를 기입하여 주시기 바랍니다.',
         placeholder: 'example@email.com',
         required: true,
