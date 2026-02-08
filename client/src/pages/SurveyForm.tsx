@@ -21,9 +21,7 @@ export default function SurveyForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPriceExpanded, setIsPriceExpanded] = useState(false);
-  // surveyId는 페이지 로드 시 복원하지 않음 (이어서 작성 선택 또는 자동저장 시에만 설정)
-  const [surveyId, setSurveyId] = useState<string | null>(null);
-  // surveyId를 ref로도 유지 (클로저 문제 방지)
+  // surveyId는 ref로만 관리 (클로저 문제 방지, 상태 불필요)
   const surveyIdRef = useRef<string | null>(null);
   const isAutoSavingRef = useRef(false);
   const saveQueueRef = useRef<Array<{ sectionIndex: number; answers: Record<string, string | string[] | RepeatableGroupItem[]> }>>([]);
@@ -169,7 +167,6 @@ export default function SurveyForm() {
 
       if (result?.id && result.id !== surveyIdRef.current) {
         surveyIdRef.current = result.id;
-        setSurveyId(result.id);
         localStorage.setItem(SURVEY_ID_KEY, result.id);
       }
     } catch (error) {
@@ -595,8 +592,7 @@ export default function SurveyForm() {
     });
 
     setAnswers(restoredAnswers);
-    setSurveyId(existingSurvey.id);
-    surveyIdRef.current = existingSurvey.id;  // ref도 업데이트
+    surveyIdRef.current = existingSurvey.id;
     localStorage.setItem(SURVEY_ID_KEY, existingSurvey.id);
 
     // 다음 섹션으로 이동 (완료된 섹션 + 1)
@@ -611,8 +607,7 @@ export default function SurveyForm() {
   // 새로 작성하기 (기존 설문 무시)
   const handleStartFresh = () => {
     // 기존 surveyId 초기화 (새로운 설문 생성)
-    setSurveyId(null);
-    surveyIdRef.current = null;  // ref도 초기화
+    surveyIdRef.current = null;
     localStorage.removeItem(SURVEY_ID_KEY);
 
     setShowResumeModal(false);
