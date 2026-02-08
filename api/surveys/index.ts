@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const resend = new Resend(apiKey);
           const { data, error } = await resend.emails.send({
             from: 'FirstRegister <onboarding@resend.dev>',
-            to: 'info@firstregister.us',
+            to: 'syjun@ventureplg.com',
             subject: '[테스트] FirstRegister 이메일 발송 테스트',
             html: `
               <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px;">

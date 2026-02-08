@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const NOTIFICATION_EMAIL = 'info@firstregister.us';
+const NOTIFICATION_EMAIL = 'syjun@ventureplg.com';
 const FROM_EMAIL = 'FirstRegister <onboarding@resend.dev>';
 
 interface SurveyNotificationData {
