@@ -603,13 +603,19 @@ export default function SurveyForm() {
       restoredAnswers[answer.questionId] = answer.value;
     });
 
+    console.log('[Resume] Restoring answers:', Object.keys(restoredAnswers).length, 'items');
+    console.log('[Resume] Answer keys:', Object.keys(restoredAnswers));
+
+    // state와 ref 모두 업데이트
     setAnswers(restoredAnswers);
+    answersRef.current = restoredAnswers;  // ref도 즉시 업데이트
     surveyIdRef.current = existingSurvey.id;
     localStorage.setItem(SURVEY_ID_KEY, existingSurvey.id);
 
     // 다음 섹션으로 이동 (완료된 섹션 + 1)
     const nextSection = (existingSurvey.completedSectionIndex || 0) + 1;
     setCurrentSectionIndex(Math.min(nextSection, totalSections - 1));
+    currentSectionIndexRef.current = Math.min(nextSection, totalSections - 1);  // ref도 즉시 업데이트
 
     setShowResumeModal(false);
     setExistingSurvey(null);
@@ -622,6 +628,7 @@ export default function SurveyForm() {
     surveyIdRef.current = null;
     localStorage.removeItem(SURVEY_ID_KEY);
 
+    // 현재 입력한 기본 정보는 유지 (answers는 건드리지 않음)
     setShowResumeModal(false);
     setExistingSurvey(null);
     proceedToNextSection();
