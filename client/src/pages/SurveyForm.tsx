@@ -23,8 +23,10 @@ export default function SurveyForm() {
   const [isPriceExpanded, setIsPriceExpanded] = useState(false);
   // surveyId는 페이지 로드 시 복원하지 않음 (이어서 작성 선택 또는 자동저장 시에만 설정)
   const [surveyId, setSurveyId] = useState<string | null>(null);
-  const lastSavedSectionRef = useRef<number>(-1);
+  // surveyId를 ref로도 유지 (클로저 문제 방지)
+  const surveyIdRef = useRef<string | null>(null);
   const isAutoSavingRef = useRef(false);
+  const saveQueueRef = useRef<Array<{ sectionIndex: number; answers: Record<string, string | string[] | RepeatableGroupItem[]> }>>([]);
 
   // 기존 설문 복원 팝업 관련 상태
   const [showResumeModal, setShowResumeModal] = useState(false);
@@ -91,85 +93,116 @@ export default function SurveyForm() {
     return personMap;
   }, [answers]);
 
-  // 자동 저장 함수
-  const performAutoSave = useCallback(async (completedSectionIndex: number, currentAnswers: Record<string, string | string[] | RepeatableGroupItem[]>) => {
-    // 이메일이 없으면 저장하지 않음 (기본 정보 미완성)
+  // 가격 계산 함수
+  const calculateTotalPrice = useCallback((currentAnswers: Record<string, string | string[] | RepeatableGroupItem[]>) => {
+    let totalPrice = BASE_PRICE;
+    questionSections.forEach(section => {
+      section.questions.forEach(question => {
+        const answer = currentAnswers[question.id];
+        if (!answer) return;
+
+        if (question.type === 'repeatable_group' && question.pricePerItem) {
+          const items = answer as RepeatableGroupItem[];
+          const additionalItems = Math.max(0, items.length - 1);
+          totalPrice += additionalItems * question.pricePerItem;
+          return;
+        }
+
+        if (question.priceEffect?.type === 'perAnswer' && question.priceEffect.values) {
+          totalPrice += question.priceEffect.values[answer as string] || 0;
+        }
+      });
+    });
+    return totalPrice;
+  }, []);
+
+  // 실제 저장 수행 함수
+  const doSave = useCallback(async (completedSectionIndex: number, currentAnswers: Record<string, string | string[] | RepeatableGroupItem[]>) => {
     const email = currentAnswers.email as string;
-    if (!email) return;
+    if (!email) return null;
 
-    // 이미 저장 중이면 스킵
+    const surveyAnswers: SurveyAnswer[] = Object.entries(currentAnswers).map(([questionId, value]) => ({
+      questionId,
+      value,
+    }));
+
+    const totalPrice = calculateTotalPrice(currentAnswers);
+
+    // surveyIdRef.current를 사용하여 항상 최신 ID 사용
+    const currentSurveyId = surveyIdRef.current;
+
+    console.log('[AutoSave] Saving section:', completedSectionIndex, 'Email:', email, 'SurveyId:', currentSurveyId);
+
+    const result = await autoSaveSurvey({
+      id: currentSurveyId || undefined,
+      customerInfo: {
+        name: currentAnswers.name as string || '',
+        email: email,
+        phone: currentAnswers.phone as string,
+        company: currentAnswers.companyName1 as string,
+      },
+      answers: surveyAnswers,
+      totalPrice,
+      completedSectionIndex,
+    });
+
+    console.log('[AutoSave] Success:', result, 'Answers count:', surveyAnswers.length);
+
+    return result;
+  }, [calculateTotalPrice]);
+
+  // 큐 처리 함수
+  const processQueue = useCallback(async () => {
     if (isAutoSavingRef.current) return;
-
-    // 이미 저장된 섹션이면 스킵
-    if (completedSectionIndex <= lastSavedSectionRef.current) return;
+    if (saveQueueRef.current.length === 0) return;
 
     isAutoSavingRef.current = true;
 
     try {
-      // 답변 변환
-      const surveyAnswers: SurveyAnswer[] = Object.entries(currentAnswers).map(([questionId, value]) => ({
-        questionId,
-        value,
-      }));
+      // 큐에서 가장 최신 항목만 처리 (가장 높은 섹션 인덱스)
+      const latestItem = saveQueueRef.current.reduce((latest, current) =>
+        current.sectionIndex > latest.sectionIndex ? current : latest
+      );
+      saveQueueRef.current = []; // 큐 비우기
 
-      // 가격 계산
-      let totalPrice = BASE_PRICE;
-      questionSections.forEach(section => {
-        section.questions.forEach(question => {
-          const answer = currentAnswers[question.id];
-          if (!answer) return;
+      const result = await doSave(latestItem.sectionIndex, latestItem.answers);
 
-          if (question.type === 'repeatable_group' && question.pricePerItem) {
-            const items = answer as RepeatableGroupItem[];
-            const additionalItems = Math.max(0, items.length - 1);
-            totalPrice += additionalItems * question.pricePerItem;
-            return;
-          }
-
-          if (question.priceEffect?.type === 'perAnswer' && question.priceEffect.values) {
-            totalPrice += question.priceEffect.values[answer as string] || 0;
-          }
-        });
-      });
-
-      console.log('[AutoSave] Saving section:', completedSectionIndex, 'Email:', email);
-
-      const result = await autoSaveSurvey({
-        id: surveyId || undefined,
-        customerInfo: {
-          name: currentAnswers.name as string || '',
-          email: email,
-          phone: currentAnswers.phone as string,
-          company: currentAnswers.companyName1 as string,
-        },
-        answers: surveyAnswers,
-        totalPrice,
-        completedSectionIndex,
-      });
-
-      console.log('[AutoSave] Success:', result);
-
-      // 새로 생성된 경우 ID 저장
-      if (result.id && result.id !== surveyId) {
+      if (result?.id && result.id !== surveyIdRef.current) {
+        surveyIdRef.current = result.id;
         setSurveyId(result.id);
         localStorage.setItem(SURVEY_ID_KEY, result.id);
       }
-
-      lastSavedSectionRef.current = completedSectionIndex;
     } catch (error) {
       console.error('[AutoSave] Error:', error);
-      // 자동 저장 실패는 사용자에게 알리지 않음 (조용히 실패)
     } finally {
       isAutoSavingRef.current = false;
+      // 큐에 새 항목이 있으면 다시 처리
+      if (saveQueueRef.current.length > 0) {
+        processQueue();
+      }
     }
-  }, [surveyId]);
+  }, [doSave]);
+
+  // 자동 저장 함수 (큐에 추가)
+  const performAutoSave = useCallback((completedSectionIndex: number, currentAnswers: Record<string, string | string[] | RepeatableGroupItem[]>) => {
+    const email = currentAnswers.email as string;
+    if (!email) return;
+
+    // 큐에 추가
+    saveQueueRef.current.push({ sectionIndex: completedSectionIndex, answers: { ...currentAnswers } });
+
+    // 큐 처리 시작
+    processQueue();
+  }, [processQueue]);
 
   // 페이지 이탈 시 자동 저장 (surveyId가 있는 경우에만 - 이미 진행 중인 설문)
   useEffect(() => {
     const handleBeforeUnload = () => {
+      // surveyIdRef.current를 사용하여 최신 ID 확인
+      const currentSurveyId = surveyIdRef.current;
+
       // surveyId가 있고 이메일이 있는 경우에만 저장 (기존 설문 업데이트)
-      // surveyId가 없으면 저장하지 않음 (기본 정보만 작성하고 이탈하는 경우 저장 안 함)
-      if (surveyId && answers.email) {
+      if (currentSurveyId && answers.email) {
         const surveyAnswers = Object.entries(answers).map(([questionId, value]) => ({
           questionId,
           value,
@@ -191,9 +224,15 @@ export default function SurveyForm() {
           });
         });
 
+        // currentSectionIndex가 0보다 크면 이전 섹션까지 완료된 것
+        // 예: currentSectionIndex=2 (주소 정보)에 있으면, 섹션 0,1은 완료됨
+        // 하지만 현재 작성 중인 내용도 저장해야 하므로 currentSectionIndex - 1로 저장
+        // (다음에 이어서 작성할 때 현재 섹션부터 시작하도록)
+        const completedIndex = currentSectionIndex > 0 ? currentSectionIndex - 1 : 0;
+
         const data = JSON.stringify({
           action: 'autosave',
-          id: surveyId,
+          id: currentSurveyId,
           customerInfo: {
             name: answers.name as string || '',
             email: answers.email as string,
@@ -202,16 +241,17 @@ export default function SurveyForm() {
           },
           answers: surveyAnswers,
           totalPrice,
-          completedSectionIndex: currentSectionIndex,
+          completedSectionIndex: completedIndex,
         });
 
+        console.log('[BeforeUnload] Saving with surveyId:', currentSurveyId, 'completedIndex:', completedIndex, 'answers:', surveyAnswers.length);
         navigator.sendBeacon('/api/surveys', new Blob([data], { type: 'application/json' }));
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [answers, currentSectionIndex, surveyId]);
+  }, [answers, currentSectionIndex]);
 
   const currentSection = questionSections[currentSectionIndex];
   const totalSections = questionSections.length;
@@ -556,8 +596,8 @@ export default function SurveyForm() {
 
     setAnswers(restoredAnswers);
     setSurveyId(existingSurvey.id);
+    surveyIdRef.current = existingSurvey.id;  // ref도 업데이트
     localStorage.setItem(SURVEY_ID_KEY, existingSurvey.id);
-    lastSavedSectionRef.current = existingSurvey.completedSectionIndex || 0;
 
     // 다음 섹션으로 이동 (완료된 섹션 + 1)
     const nextSection = (existingSurvey.completedSectionIndex || 0) + 1;
@@ -572,8 +612,8 @@ export default function SurveyForm() {
   const handleStartFresh = () => {
     // 기존 surveyId 초기화 (새로운 설문 생성)
     setSurveyId(null);
+    surveyIdRef.current = null;  // ref도 초기화
     localStorage.removeItem(SURVEY_ID_KEY);
-    lastSavedSectionRef.current = -1;
 
     setShowResumeModal(false);
     setExistingSurvey(null);
@@ -593,7 +633,8 @@ export default function SurveyForm() {
           const result = await findSurveyByEmail(email);
           if (result.found && result.survey) {
             // 현재 surveyId와 같은 설문이면 바로 진행 (이미 같은 설문 진행 중)
-            if (surveyId && result.survey.id === surveyId) {
+            const currentSurveyId = surveyIdRef.current;
+            if (currentSurveyId && result.survey.id === currentSurveyId) {
               setIsCheckingEmail(false);
               proceedToNextSection();
               return;
@@ -643,7 +684,7 @@ export default function SurveyForm() {
       }));
 
       await createSurvey({
-        id: surveyId || undefined,  // 기존 작성중 설문 ID 포함
+        id: surveyIdRef.current || undefined,  // 기존 작성중 설문 ID 포함
         customerInfo: {
           name: answers.name as string,
           email: answers.email as string,
