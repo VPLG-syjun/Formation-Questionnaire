@@ -55,10 +55,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             to: 'syjun@ventureplg.com',
             subject: '[테스트] FirstRegister 이메일 발송 테스트',
             html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px;">
-                <h2>이메일 발송 테스트</h2>
-                <p>이 메일이 도착했다면 이메일 설정이 정상입니다.</p>
-                <p>발송 시간: ${new Date().toISOString()}</p>
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1a1a1a; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">
+                  이메일 발송 테스트
+                </h2>
+
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                  <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; width: 120px;">상태</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                      <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 14px; background-color: #d1fae5; color: #065f46;">
+                        정상 작동
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280;">발송 시간</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #1a1a1a;">${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}</td>
+                  </tr>
+                </table>
+
+                <div style="margin-top: 24px; padding: 16px; background-color: #f3f4f6; border-radius: 8px; text-align: center;">
+                  <p style="margin: 0 0 12px 0; color: #4b5563; font-size: 14px;">
+                    이 메일이 도착했다면 이메일 설정이 정상입니다.
+                  </p>
+                  <a href="https://formation-questionnaire.vercel.app/admin/login"
+                     style="display: inline-block; padding: 10px 24px; background-color: #3b82f6; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                    관리자 대시보드 열기
+                  </a>
+                </div>
+
+                <p style="margin-top: 24px; color: #9ca3af; font-size: 12px;">
+                  이 메일은 FirstRegister 시스템에서 자동으로 발송되었습니다.
+                </p>
               </div>
             `,
           });
