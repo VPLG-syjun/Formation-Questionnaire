@@ -2773,3 +2773,67 @@ textarea.answer-edit-input {
   flex: 1;
   max-width: 150px;
 }
+
+/* 이용약관 모달 */
+.terms-modal {
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.terms-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.terms-modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--color-gray-800);
+}
+
+.terms-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-gray-500);
+  padding: 0;
+  line-height: 1;
+}
+
+.terms-modal-close:hover {
+  color: var(--color-gray-700);
+}
+
+.terms-modal-body {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.terms-modal-body h4 {
+  margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
+  font-size: 1rem;
+  color: var(--color-gray-800);
+}
+
+.terms-modal-body h4:first-child {
+  margin-top: 0;
+}
+
+.terms-modal-body p {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-gray-600);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.terms-modal .modal-buttons {
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-gray-200);
+}

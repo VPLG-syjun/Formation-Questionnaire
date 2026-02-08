@@ -43,6 +43,9 @@ export default function SurveyForm() {
   const [existingSurvey, setExistingSurvey] = useState<Survey | null>(null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
+  // 이용약관 팝업 상태
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   // 모든 입력된 이름-주소-이메일 매핑을 수집하는 함수
   // currentAnswers 인수를 받아서 현재 상태를 기반으로 수집
   // 대소문자 무시하여 이름 매칭 (키는 소문자로 저장)
@@ -740,7 +743,26 @@ export default function SurveyForm() {
         </label>
 
         {question.description && (
-          <p className="question-description">{question.description}</p>
+          <p className="question-description">
+            {question.description.includes('{{TERMS_LINK}}') ? (
+              <>
+                {question.description.split('{{TERMS_LINK}}')[0]}
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowTermsModal(true);
+                  }}
+                  style={{ color: 'var(--color-primary)', textDecoration: 'underline', cursor: 'pointer' }}
+                >
+                  이용약관 및 개인정보 처리방침
+                </a>
+                {question.description.split('{{TERMS_LINK}}')[1]}
+              </>
+            ) : (
+              question.description
+            )}
+          </p>
         )}
 
         {renderInput(question, value, error)}
@@ -1109,6 +1131,71 @@ export default function SurveyForm() {
                 onClick={handleResumeSurvey}
               >
                 이어서 작성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이용약관 및 개인정보 처리방침 팝업 */}
+      {showTermsModal && (
+        <div className="modal-overlay" onClick={() => setShowTermsModal(false)}>
+          <div className="modal-content terms-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="terms-modal-header">
+              <h3>이용약관 및 개인정보 처리방침</h3>
+              <button
+                type="button"
+                className="terms-modal-close"
+                onClick={() => setShowTermsModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="terms-modal-body">
+              <h4>1. 개인정보의 수집 및 이용 (Privacy Notice)</h4>
+              <p>
+                본 서비스는 효율적인 법인 설립 지원을 위해 귀하의 이메일 및 답변 정보를 수집합니다.
+                수집된 정보는 서비스 제공, 상담, 비용 청구 및 Formation Pro, LLC와 Venture Pacific Law Group, PC의
+                새로운 서비스 안내, 법률 업데이트 등 마케팅 목적으로 활용됩니다.
+              </p>
+              <p><strong>보유 기간:</strong> 서비스 목적 달성 시 또는 관련 법령에 따른 보존 기간까지.</p>
+
+              <h4>2. 이용자 권리 (User Rights)</h4>
+              <p>
+                귀하는 언제든지 자신의 개인정보에 대한 열람, 수정, 삭제 및 마케팅 수신 거부를 요청할 권리가 있습니다.
+              </p>
+              <p>
+                <strong>California residents (CCPA/CPRA):</strong> 귀하는 개인정보의 수집 및 공유를 제한할 권리가 있습니다.
+              </p>
+              <p>
+                <strong>한국 거주자 (PIPA):</strong> 귀하는 개인정보 처리에 대한 동의를 거부할 수 있으나, 서비스 이용이 제한될 수 있습니다.
+              </p>
+
+              <h4>3. 법적 고지 (Legal Disclaimer)</h4>
+              <p>
+                본 웹사이트에서 제공되는 모든 정보는 일반적인 정보 제공을 목적으로 하며, 특정 사안에 대한 법률적 조언(Legal Advice)을 대체할 수 없습니다.
+                이용자와 본 사이트 운영자 간에는 변호사-의뢰인 관계가 성립되지 않습니다.
+                개별적인 법률 문제는 반드시 자격을 갖춘 변호사와 상담하시기 바랍니다.
+              </p>
+
+              <h4>4. 저작권 (Copyright)</h4>
+              <p>
+                본 서비스 내 모든 콘텐츠는 저작권법의 보호를 받습니다.
+                권한 없는 복제, 배포 및 상업적 목적의 무단 연결은 엄격히 금지됩니다.
+              </p>
+
+              <h4>5. 연락처 및 철회</h4>
+              <p>
+                본 정책이나 마케팅 수신 철회에 관한 문의는 귀하의 담당자 또는 공식 이메일 주소로 연락해 주시기 바랍니다.
+              </p>
+            </div>
+            <div className="modal-buttons">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowTermsModal(false)}
+              >
+                확인
               </button>
             </div>
           </div>
