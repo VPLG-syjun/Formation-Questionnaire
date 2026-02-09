@@ -9,18 +9,6 @@ export const questionSections: QuestionSection[] = [
     description: '',
     questions: [
       {
-        id: 'email',
-        type: 'email',
-        text: '이메일 주소 수집',
-        description: 'FirstRegister는 입력하신 이메일 주소를 통해 질문지 내용을 확인하고, Invoice를 발행하며, Formation Pro, LLC 및 Venture Pacific Law Group, PC의 서비스 안내 및 마케팅 정보를 전달합니다. 반드시 정확한 주 이메일 주소를 기입해 주시기 바랍니다.',
-        placeholder: 'example@email.com',
-        required: true,
-        validation: {
-          pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-        },
-        documentField: 'customerEmail',
-      },
-      {
         id: 'agreeTerms',
         type: 'dropdown',
         text: 'By clicking, I further agree to the site\'s Terms of Use.',
@@ -31,6 +19,22 @@ export const questionSections: QuestionSection[] = [
           { value: '2', label: 'Deny' },
         ],
         documentField: 'agreeTerms',
+      },
+      {
+        id: 'email',
+        type: 'email',
+        text: '이메일 주소 수집',
+        description: 'FirstRegister는 입력하신 이메일 주소를 통해 질문지 내용을 확인하고, Invoice를 발행하며, Formation Pro, LLC 및 Venture Pacific Law Group, PC의 서비스 안내 및 마케팅 정보를 전달합니다. 반드시 정확한 주 이메일 주소를 기입해 주시기 바랍니다.',
+        placeholder: 'example@email.com',
+        required: true,
+        conditionalOn: {
+          questionId: 'agreeTerms',
+          values: ['1'],
+        },
+        validation: {
+          pattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+        },
+        documentField: 'customerEmail',
       },
       {
         id: 'proceedWithCorp',
