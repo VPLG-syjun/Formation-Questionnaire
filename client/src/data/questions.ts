@@ -600,6 +600,18 @@ export const questionSections: QuestionSection[] = [
         documentField: 'referralSource',
       },
       {
+        id: 'referralName',
+        type: 'text',
+        text: '추천해주신 분의 성함을 알려주세요.',
+        placeholder: '홍길동',
+        required: true,
+        conditionalOn: {
+          questionId: 'referralSource',
+          values: ['referral'],
+        },
+        documentField: 'referralName',
+      },
+      {
         id: 'additionalNotes',
         type: 'text',
         text: '추가로 문의하실 사항이 있으신가요?',
