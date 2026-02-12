@@ -7,11 +7,12 @@ import { createSurvey, autoSaveSurvey, findSurveyByEmail } from '../services/api
 // localStorage 키
 const SURVEY_ID_KEY = 'surveyFormId';
 
-// 이름-주소-이메일 매핑 정보 타입
+// 이름-주소-이메일-SSN 매핑 정보 타입
 interface PersonInfo {
   name: string;
   address?: string;
   email?: string;
+  ssn?: string;
 }
 
 export default function SurveyForm() {
@@ -64,18 +65,19 @@ export default function SurveyForm() {
           name: existing?.name || name,  // 원본 이름 유지
           address: existing?.address || director.address?.trim() || undefined,
           email: existing?.email || director.email?.trim() || undefined,
+          ssn: existing?.ssn || director.ssn?.trim() || undefined,
         });
       }
     });
 
     // 임원 정보 수집 (CEO, CFO, CS)
     const officers = [
-      { nameKey: 'ceoName', addressKey: 'ceoAddress', emailKey: 'ceoEmail' },
-      { nameKey: 'cfoName', addressKey: 'cfoAddress', emailKey: 'cfoEmail' },
-      { nameKey: 'csName', addressKey: 'csAddress', emailKey: 'csEmail' },
+      { nameKey: 'ceoName', addressKey: 'ceoAddress', emailKey: 'ceoEmail', ssnKey: 'ceoSsn' },
+      { nameKey: 'cfoName', addressKey: 'cfoAddress', emailKey: 'cfoEmail', ssnKey: 'cfoSsn' },
+      { nameKey: 'csName', addressKey: 'csAddress', emailKey: 'csEmail', ssnKey: 'csSsn' },
     ];
 
-    officers.forEach(({ nameKey, addressKey, emailKey }) => {
+    officers.forEach(({ nameKey, addressKey, emailKey, ssnKey }) => {
       const name = (answersToUse[nameKey] as string)?.trim();
       if (name) {
         const key = name.toLowerCase();  // 대소문자 무시
@@ -84,6 +86,7 @@ export default function SurveyForm() {
           name: existing?.name || name,  // 원본 이름 유지
           address: existing?.address || (answersToUse[addressKey] as string)?.trim() || undefined,
           email: existing?.email || (answersToUse[emailKey] as string)?.trim() || undefined,
+          ssn: existing?.ssn || (answersToUse[ssnKey] as string)?.trim() || undefined,
         });
       }
     });
@@ -99,6 +102,7 @@ export default function SurveyForm() {
           name: existing?.name || name,  // 원본 이름 유지
           address: existing?.address || founder.address?.trim() || undefined,
           email: existing?.email || founder.email?.trim() || undefined,
+          ssn: existing?.ssn || founder.ssn?.trim() || undefined,
         });
       }
     });
@@ -401,11 +405,11 @@ export default function SurveyForm() {
   }, [answers]);
 
   const handleAnswer = (questionId: string, value: string | string[] | RepeatableGroupItem[]) => {
-    // 임원 이름 필드와 해당하는 주소/이메일 필드 매핑
-    const officerFieldMapping: Record<string, { addressKey: string; emailKey: string }> = {
-      ceoName: { addressKey: 'ceoAddress', emailKey: 'ceoEmail' },
-      cfoName: { addressKey: 'cfoAddress', emailKey: 'cfoEmail' },
-      csName: { addressKey: 'csAddress', emailKey: 'csEmail' },
+    // 임원 이름 필드와 해당하는 주소/이메일/SSN 필드 매핑
+    const officerFieldMapping: Record<string, { addressKey: string; emailKey: string; ssnKey: string }> = {
+      ceoName: { addressKey: 'ceoAddress', emailKey: 'ceoEmail', ssnKey: 'ceoSsn' },
+      cfoName: { addressKey: 'cfoAddress', emailKey: 'cfoEmail', ssnKey: 'cfoSsn' },
+      csName: { addressKey: 'csAddress', emailKey: 'csEmail', ssnKey: 'csSsn' },
     };
 
     setAnswers(prev => {
@@ -415,7 +419,7 @@ export default function SurveyForm() {
       if (officerFieldMapping[questionId] && typeof value === 'string' && value.trim()) {
         const personMap = collectPersonInfoMap(prev);
         const matchedPerson = personMap.get(value.trim().toLowerCase());  // 대소문자 무시
-        const { addressKey, emailKey } = officerFieldMapping[questionId];
+        const { addressKey, emailKey, ssnKey } = officerFieldMapping[questionId];
 
         if (matchedPerson) {
           // 현재 주소가 비어있고 매칭된 사람에게 주소가 있으면 자동 채움
@@ -425,6 +429,10 @@ export default function SurveyForm() {
           // 현재 이메일이 비어있고 매칭된 사람에게 이메일이 있으면 자동 채움
           if (!(prev[emailKey] as string)?.trim() && matchedPerson.email) {
             newAnswers[emailKey] = matchedPerson.email;
+          }
+          // 현재 SSN이 비어있고 매칭된 사람에게 SSN이 있으면 자동 채움
+          if (!(prev[ssnKey] as string)?.trim() && matchedPerson.ssn) {
+            newAnswers[ssnKey] = matchedPerson.ssn;
           }
         }
       }
@@ -456,7 +464,7 @@ export default function SurveyForm() {
     handleAnswer(questionId, newItems);
   };
 
-  // 반복 그룹: 필드 값 변경 (이름 입력 시 주소/이메일 자동 완성)
+  // 반복 그룹: 필드 값 변경 (이름 입력 시 주소/이메일/SSN 자동 완성)
   const handleGroupFieldChange = (questionId: string, itemIndex: number, fieldId: string, value: string) => {
     const currentItems = (answers[questionId] as RepeatableGroupItem[]) || [];
     const newItems = [...currentItems];
@@ -475,6 +483,10 @@ export default function SurveyForm() {
         // 현재 이메일이 비어있고 매칭된 사람에게 이메일이 있으면 자동 채움
         if (!newItems[itemIndex].email?.trim() && matchedPerson.email) {
           newItems[itemIndex].email = matchedPerson.email;
+        }
+        // 현재 SSN이 비어있고 매칭된 사람에게 SSN이 있으면 자동 채움
+        if (!newItems[itemIndex].ssn?.trim() && matchedPerson.ssn) {
+          newItems[itemIndex].ssn = matchedPerson.ssn;
         }
       }
     }

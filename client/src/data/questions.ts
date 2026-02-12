@@ -237,6 +237,13 @@ export const questionSections: QuestionSection[] = [
             placeholder: 'example@email.com',
             required: true,
           },
+          {
+            id: 'ssn',
+            type: 'text',
+            label: 'Social Security Number',
+            placeholder: '000-00-0000',
+            required: false,
+          },
         ],
         documentField: 'directors',
       },
@@ -279,6 +286,14 @@ export const questionSections: QuestionSection[] = [
         documentField: 'CEOEmail',
       },
       {
+        id: 'ceoSsn',
+        type: 'text',
+        text: 'CEO Social Security Number',
+        placeholder: '000-00-0000',
+        required: false,
+        documentField: 'CEOSsn',
+      },
+      {
         id: 'cfoName',
         type: 'text',
         text: 'CFO 성명(영문)',
@@ -303,6 +318,14 @@ export const questionSections: QuestionSection[] = [
         documentField: 'CFOEmail',
       },
       {
+        id: 'cfoSsn',
+        type: 'text',
+        text: 'CFO Social Security Number',
+        placeholder: '000-00-0000',
+        required: false,
+        documentField: 'CFOSsn',
+      },
+      {
         id: 'csName',
         type: 'text',
         text: 'Corporate Secretary 성명 (영문)',
@@ -325,6 +348,14 @@ export const questionSections: QuestionSection[] = [
         placeholder: 'example@email.com',
         required: false,
         documentField: 'CSEmail',
+      },
+      {
+        id: 'csSsn',
+        type: 'text',
+        text: 'Corporate Secretary Social Security Number',
+        placeholder: '000-00-0000',
+        required: false,
+        documentField: 'CSSsn',
       },
       {
         id: 'officerName',
@@ -383,6 +414,17 @@ export const questionSections: QuestionSection[] = [
             label: '이메일 주소',
             placeholder: 'example@email.com',
             required: false,
+          },
+          {
+            id: 'ssn',
+            type: 'text',
+            label: 'Social Security Number',
+            placeholder: '000-00-0000',
+            required: false,
+            conditionalOn: {
+              fieldId: 'type',
+              values: ['individual'],
+            },
           },
           {
             id: 'ceoName',
