@@ -1141,9 +1141,10 @@ export function transformSurveyToVariables(
             lastDayOfMonth.setDate(lastDayOfMonth.getDate() - 1);
           }
 
-          result['SHSIGNDate'] = formatDate(lastDayOfMonth.toISOString(), 'MMM D, YYYY');
-          result['SHSIGNDateShort'] = formatDate(lastDayOfMonth.toISOString(), 'MM/DD/YYYY');
-          result['SHSIGNDateISO'] = formatDate(lastDayOfMonth.toISOString(), 'YYYY-MM-DD');
+          // Date 객체 직접 전달 (toISOString() 사용 시 UTC 변환으로 날짜 밀림 방지)
+          result['SHSIGNDate'] = formatDate(lastDayOfMonth, 'MMM D, YYYY');
+          result['SHSIGNDateShort'] = formatDate(lastDayOfMonth, 'MM/DD/YYYY');
+          result['SHSIGNDateISO'] = formatDate(lastDayOfMonth, 'YYYY-MM-DD');
           console.log(`[transformSurveyToVariables] Cashin: ${cashinValue}, SHSIGNDate: ${result['SHSIGNDate']}`);
         }
       } catch (e) {
