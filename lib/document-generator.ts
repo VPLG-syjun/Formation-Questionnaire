@@ -386,14 +386,14 @@ export function formatDate(value: string | Date | undefined, format: string = 'Y
       return `${pad(day)}/${pad(month)}/${year}`;
 
     default:
-      // 커스텀 형식 지원
+      // 커스텀 형식 지원 (긴 패턴부터 먼저 replace해야 함)
       return format
         .replace('YYYY', year.toString())
-        .replace('MM', pad(month))
-        .replace('DD', pad(day))
         .replace('MMMM', MONTH_NAMES_EN[month - 1])
         .replace('MMM', MONTH_NAMES_SHORT[month - 1])
+        .replace('MM', pad(month))
         .replace('M', month.toString())
+        .replace('DD', pad(day))
         .replace('D', day.toString());
   }
 }
