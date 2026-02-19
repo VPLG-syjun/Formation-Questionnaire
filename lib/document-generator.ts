@@ -387,14 +387,15 @@ export function formatDate(value: string | Date | undefined, format: string = 'Y
 
     default:
       // 커스텀 형식 지원 (긴 패턴부터 먼저 replace해야 함)
+      // M과 D는 정규식을 사용하여 월 이름 내부의 문자와 매칭되지 않도록 함
       return format
         .replace('YYYY', year.toString())
         .replace('MMMM', MONTH_NAMES_EN[month - 1])
         .replace('MMM', MONTH_NAMES_SHORT[month - 1])
         .replace('MM', pad(month))
-        .replace('M', month.toString())
+        .replace(/M(?![a-z])/g, month.toString())
         .replace('DD', pad(day))
-        .replace('D', day.toString());
+        .replace(/D(?![a-z])/g, day.toString());
   }
 }
 
