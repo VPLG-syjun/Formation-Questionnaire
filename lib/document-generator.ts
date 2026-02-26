@@ -1884,7 +1884,7 @@ export function transformSurveyToVariables(
     console.log(`[transformSurveyToVariables] Fallback: Founder1Cash=${founder1CashNum}, FMV=${fmvNum}`);
 
     if (!isNaN(founder1CashNum) && !isNaN(fmvNum) && fmvNum !== 0) {
-      const shareCount = founder1CashNum / fmvNum;
+      const shareCount = Math.floor(founder1CashNum / fmvNum);
       result['Founder1Share'] = formatNumberWithComma(shareCount);
       console.log(`[transformSurveyToVariables] Fallback: Founder1Share = ${result['Founder1Share']}`);
     }
@@ -1900,7 +1900,7 @@ export function transformSurveyToVariables(
       const fmvNum = parseFloat((result['FMV'] || '0').replace(/[$,]/g, ''));
 
       if (!isNaN(founderCashNum) && !isNaN(fmvNum) && fmvNum !== 0 && founderCashNum > 0) {
-        const shareCount = founderCashNum / fmvNum;
+        const shareCount = Math.floor(founderCashNum / fmvNum);
         result[shareKey] = formatNumberWithComma(shareCount);
         console.log(`[transformSurveyToVariables] Fallback: ${shareKey} = ${result[shareKey]}`);
       }
@@ -1923,7 +1923,7 @@ export function transformSurveyToVariables(
     }
 
     if (result[shareKey]) {
-      const shareNum = parseFloat((result[shareKey] || '0').replace(/,/g, ''));
+      const shareNum = Math.floor(parseFloat((result[shareKey] || '0').replace(/,/g, '')));
       if (!isNaN(shareNum)) {
         totalShare += shareNum;
       }
